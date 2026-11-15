@@ -1,0 +1,104 @@
+<div class="page-header">
+  <h1 class="page-title">Transfers</h1>
+  <a mat-flat-button routerLink="/transfers/new">
+    <mat-icon>send</mat-icon>
+    New transfer
+  </a>
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading transfers…" />
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load your transfers" [message]="error()">
+      <button mat-flat-button type="button" (click)="load()">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (totalCount() === 0) {
+      <app-state-panel
+        kind="empty"
+        icon="swap_horiz"
+        title="No transfers yet"
+        message="Money you send or receive will show up here."
+      >
+        <a mat-flat-button routerLink="/transfers/new">
+          <mat-icon>send</mat-icon>
+          New transfer
+        </a>
+      </app-state-panel>
+    } @else {
+      <div class="table-wrap">
+        <table mat-table [dataSource]="rows()" class="transfers-table">
+          <ng-container matColumnDef="createdAt">
+            <th mat-header-cell *matHeaderCellDef>Date</th>
+            <td mat-cell *matCellDef="let row" class="nowrap">{{ row.createdAt | utcDate: 'medium' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="direction">
+            <th mat-header-cell *matHeaderCellDef>Direction</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="direction" [attr.data-direction]="row.direction">
+                <mat-icon aria-hidden="true">{{ row.direction === 'Incoming' ? 'south_west' : 'north_east' }}</mat-icon>
+                {{ row.direction === 'Incoming' ? 'In' : 'Out' }}
+              </span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="counterparty">
+            <th mat-header-cell *matHeaderCellDef>Counterparty</th>
+            <td mat-cell *matCellDef="let row" class="mono nowrap">{{ row.counterPartyAccountNumber }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="myAccount">
+            <th mat-header-cell *matHeaderCellDef>My account</th>
+            <td mat-cell *matCellDef="let row" class="mono nowrap muted">{{ row.myAccountNumber }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef>Description</th>
+            <td mat-cell *matCellDef="let row" class="description" [matTooltip]="row.description ?? ''">
+              {{ row.description || '—' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let row"><app-status-badge [status]="row.status" /></td>
+          </ng-container>
+
+          <ng-container matColumnDef="amount">
+            <th mat-header-cell *matHeaderCellDef class="num">Amount</th>
+            <td mat-cell *matCellDef="let row" class="num amount" [attr.data-direction]="row.direction">
+              {{ row.direction === 'Incoming' ? '+' : '−' }}{{ row.amount | money: row.currency }}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: columns"
+            class="clickable"
+            tabindex="0"
+            role="link"
+            [attr.aria-label]="'Transfer ' + row.id"
+            (click)="open(row)"
+            (keydown.enter)="open(row)"
+          ></tr>
+        </table>
+      </div>
+
+      <mat-paginator
+        [length]="totalCount()"
+        [pageIndex]="pageIndex()"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="pageSizeOptions"
+        (page)="onPage($event)"
+        aria-label="Transfer pages"
+      />
+    }
+  }
+}

@@ -25,6 +25,7 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'error';
 /** Why an action is unavailable (null = allowed). Mirrors the BankAccount domain rules. */
 interface ActionRules {
   deposit: string | null;
+  send: string | null;
   rename: string | null;
   close: string | null;
 }
@@ -67,11 +68,12 @@ export class AccountDetailPageComponent implements OnInit {
 
   protected readonly rules = computed<ActionRules>(() => {
     const a = this.account();
-    if (!a) return { deposit: 'Loading', rename: 'Loading', close: 'Loading' };
+    if (!a) return { deposit: 'Loading', send: 'Loading', rename: 'Loading', close: 'Loading' };
     const inactive =
       a.status === 'Closed' ? 'This account is closed.' : a.status === 'Frozen' ? 'This account is frozen.' : null;
     return {
       deposit: inactive,
+      send: inactive ?? (a.balance <= 0 ? 'There is no money on this account to send.' : null),
       rename: a.status === 'Closed' ? 'Closed accounts cannot be renamed.' : null,
       close:
         inactive ??

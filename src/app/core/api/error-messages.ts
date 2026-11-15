@@ -26,6 +26,9 @@ export const SERVER_MESSAGES = {
   profileLastName: 'Last name',
   profilePhoneNumber: 'Phone number',
   profilePhoneInUse: 'This phone number is already in use',
+  /** POST transfers/recipients/lookup limit (1/s, 20 per 10 min) — returned as 400, not 429. */
+  tooManyLookups: 'Too many lookups',
+  transferIdempotencyConflict: 'Idempotency key already used for a different transfer',
 } as const;
 
 export type ServerMessageKey = keyof typeof SERVER_MESSAGES;
@@ -110,6 +113,35 @@ const PROFILE_FIELDS: ReadonlyArray<[ServerMessageKey, string]> = [
 export function profileFieldError(e: HasServerMessage): { field: string; message: string } | null {
   const hit = PROFILE_FIELDS.find(([key]) => matchesServerMessage(e.serverMessage, key));
   return hit && e.serverMessage ? { field: hit[1], message: e.serverMessage } : null;
+}
+
+/** Recipient-lookup rate limit: real 429 or the backend's 400 "Too many lookups…". */
+export const isLookupRateLimited = (e: HasServerMessage) =>
+  e.status === 429 || matchesServerMessage(e.serverMessage, 'tooManyLookups');
+
+export const TRANSFER_MESSAGES = {
+  lookupRateLimited: 'Too many lookups. Wait a minute before searching again.',
+  mayHaveGoneThrough:
+    'The transfer may already have gone through. Check your transfer history before trying again.',
+  idempotencyConflict:
+    'This request ID was already used for a different transfer. Check your transfer history, then start a new transfer.',
+} as const;
+
+/**
+ * Text for a failed transfer submit. Server messages are shown as-is (insufficient funds, inactive account,
+ * unknown destination…). Outcomes where the transfer might have happened (409, network error, 5xx without
+ * a meaningful message) add `mayHaveGoneThrough`.
+ */
+export function transferErrorMessage(e: HasServerMessage): { message: string; checkHistory: boolean } {
+  if (matchesServerMessage(e.serverMessage, 'transferIdempotencyConflict')) {
+    return { message: TRANSFER_MESSAGES.idempotencyConflict, checkHistory: true };
+  }
+  const unclear = !e.serverMessage || isTechnicalMessage(e.serverMessage);
+  if (e.status === 409 || e.status === 0 || (e.status >= 500 && unclear)) {
+    const base = e.status === 409 && unclear ? 'The transfer could not be confirmed.' : e.message;
+    return { message: `${base} ${TRANSFER_MESSAGES.mayHaveGoneThrough}`, checkHistory: true };
+  }
+  return { message: e.message, checkHistory: false };
 }
 
 /**

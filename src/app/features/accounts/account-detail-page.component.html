@@ -67,6 +67,19 @@
                 Deposit
               </button>
             </span>
+            <span [matTooltip]="rules().send ?? ''">
+              @if (rules().send) {
+                <button mat-stroked-button type="button" disabled>
+                  <mat-icon>send</mat-icon>
+                  Send money
+                </button>
+              } @else {
+                <a mat-stroked-button routerLink="/transfers/new" [queryParams]="{ from: a.accountNumber }">
+                  <mat-icon>send</mat-icon>
+                  Send money
+                </a>
+              }
+            </span>
             <span [matTooltip]="rules().rename ?? ''">
               <button mat-stroked-button type="button" [disabled]="!!rules().rename" (click)="rename()">
                 <mat-icon>edit</mat-icon>

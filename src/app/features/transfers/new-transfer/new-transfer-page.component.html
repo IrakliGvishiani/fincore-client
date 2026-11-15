@@ -1,0 +1,272 @@
+<a mat-button routerLink="/transfers" class="back">
+  <mat-icon>arrow_back</mat-icon>
+  Transfer history
+</a>
+
+<h1 class="page-title">{{ result() ? 'Transfer result' : 'New transfer' }}</h1>
+
+@switch (loadState()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading your accounts…" />
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load your accounts" [message]="loadError()">
+      <button mat-flat-button type="button" (click)="loadAccounts(true)">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (result(); as r) {
+      <!-- ===== Result ===== -->
+      <mat-card appearance="outlined" class="result" [attr.data-status]="r.transfer.status">
+        <mat-card-content>
+          <div class="result-head">
+            <mat-icon class="result-icon">
+              {{ r.transfer.status === 'Completed' ? 'check_circle' : r.transfer.status === 'Failed' ? 'error' : 'schedule' }}
+            </mat-icon>
+            <div>
+              <div class="result-title">
+                @switch (r.transfer.status) {
+                  @case ('Completed') { Transfer completed }
+                  @case ('Failed') { Transfer failed }
+                  @case ('Pending') { Transfer is being processed }
+                  @default { Transfer {{ r.transfer.status.toLowerCase() }} }
+                }
+              </div>
+              <app-status-badge [status]="r.transfer.status" />
+            </div>
+          </div>
+
+          <div class="result-amount">{{ r.transfer.amount | money: r.transfer.currency }}</div>
+
+          @if (r.transfer.status === 'Failed' && r.transfer.failureReason) {
+            <app-form-alert kind="error">{{ r.transfer.failureReason }}</app-form-alert>
+          } @else if (r.transfer.status === 'Pending') {
+            <app-form-alert kind="info">The money has not arrived yet. Check the transfer details later.</app-form-alert>
+          }
+
+          <dl class="facts">
+            <div>
+              <dt>From</dt>
+              <dd>{{ r.draft.from.name }} <span class="mono sub">{{ r.transfer.fromAccountNumber }}</span></dd>
+            </div>
+            <div>
+              <dt>To</dt>
+              <!-- Recipient mode: show the masked number the user picked, not the full one in the response. -->
+              <dd class="mono">{{ r.draft.toLabel }}</dd>
+            </div>
+            <div>
+              <dt>Description</dt>
+              <dd>{{ r.transfer.description || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Reference</dt>
+              <dd class="mono">#{{ r.transfer.id }}</dd>
+            </div>
+          </dl>
+
+          <div class="actions">
+            <a mat-flat-button [routerLink]="['/transfers', r.transfer.id]">
+              <mat-icon>receipt_long</mat-icon>
+              View details
+            </a>
+            <button mat-stroked-button type="button" [disabled]="downloading()" (click)="downloadReceipt(r.transfer.id)">
+              <mat-icon>download</mat-icon>
+              {{ downloading() ? 'Downloading…' : 'Download receipt' }}
+            </button>
+            <button mat-button type="button" (click)="newTransfer()">
+              <mat-icon>add</mat-icon>
+              New transfer
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    } @else if (activeAccounts().length === 0) {
+      <app-state-panel
+        kind="empty"
+        icon="account_balance_wallet"
+        title="No account can send money"
+        message="You need an active account with funds to make a transfer."
+      >
+        <a mat-flat-button routerLink="/accounts">Go to accounts</a>
+      </app-state-panel>
+    } @else {
+      <!-- ===== Form ===== -->
+      <mat-card appearance="outlined" class="form-card">
+        <mat-card-content>
+          <form class="transfer-form" [formGroup]="form" (ngSubmit)="openReview()" novalidate>
+            <mat-button-toggle-group
+              class="mode-toggle"
+              [value]="mode()"
+              (change)="setMode($event.value)"
+              aria-label="Find the recipient by"
+            >
+              <mat-button-toggle value="account">
+                <mat-icon>numbers</mat-icon>
+                Account number
+              </mat-button-toggle>
+              <mat-button-toggle value="recipient">
+                <mat-icon>badge</mat-icon>
+                Personal number
+              </mat-button-toggle>
+            </mat-button-toggle-group>
+
+            <!-- From -->
+            <mat-form-field>
+              <mat-label>From account</mat-label>
+              <mat-select formControlName="fromAccountNumber" panelClass="account-select-panel">
+                <mat-select-trigger>
+                  @if (fromAccount(); as a) {
+                    {{ a.name }} · {{ a.balance | money: a.currency }}
+                  }
+                </mat-select-trigger>
+                @for (a of activeAccounts(); track a.accountNumber) {
+                  <mat-option [value]="a.accountNumber">
+                    <div class="account-option">
+                      <span class="opt-name">{{ a.name }}</span>
+                      <span class="opt-sub mono">{{ a.accountNumber }}</span>
+                    </div>
+                    <span class="opt-balance">{{ a.balance | money: a.currency }}</span>
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>Only active accounts are listed. The transfer is made in this account's currency.</mat-hint>
+              <mat-error>{{ fieldError(form.controls.fromAccountNumber, 'Source account', { required: 'Choose an account to send from.' }) }}</mat-error>
+            </mat-form-field>
+
+            <!-- To -->
+            @if (mode() === 'account') {
+              <mat-form-field>
+                <mat-label>Recipient account number</mat-label>
+                <input
+                  matInput
+                  formControlName="toAccountNumber"
+                  class="mono"
+                  placeholder="FC0000000000000000"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  spellcheck="false"
+                  [maxlength]="limits.accountNumberMaxLength + 8"
+                />
+                @if (fromAccount(); as a) {
+                  <mat-hint>Must be a {{ a.currency }} account.</mat-hint>
+                }
+                <mat-error>
+                  {{ fieldError(form.controls.toAccountNumber, 'Account number', { pattern: 'Account numbers look like FC followed by 16 digits.' }) }}
+                </mat-error>
+              </mat-form-field>
+            } @else {
+              <div class="lookup">
+                <mat-form-field class="lookup-field">
+                  <mat-label>Recipient's personal number</mat-label>
+                  <input
+                    matInput
+                    formControlName="personalNumber"
+                    inputmode="numeric"
+                    maxlength="11"
+                    autocomplete="off"
+                    (keydown.enter)="$event.preventDefault(); lookup()"
+                  />
+                  <mat-hint>11 digits</mat-hint>
+                  <mat-error>
+                    {{ fieldError(form.controls.personalNumber, 'Personal number', { pattern: 'Must be exactly 11 digits.' }) }}
+                  </mat-error>
+                </mat-form-field>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="lookup-button"
+                  [disabled]="lookingUp() || lookupCooldown.active()"
+                  (click)="lookup()"
+                >
+                  @if (lookingUp()) {
+                    <mat-spinner class="button-spinner" diameter="18" />
+                  }
+                  {{ lookupCooldown.active() && !lookingUp() ? 'Wait ' + lookupCooldown.remaining() + ' s' : 'Find accounts' }}
+                </button>
+              </div>
+
+              @if (lookupError(); as message) {
+                <app-form-alert kind="error">{{ message }}</app-form-alert>
+              }
+
+              @if (recipients().length) {
+                <fieldset class="recipients">
+                  <legend>Choose the recipient's account</legend>
+                  <mat-radio-group formControlName="toAccountId" class="recipient-list">
+                    @for (r of recipients(); track r.accountId) {
+                      @let reason = recipientDisabledReason(r);
+                      <mat-radio-button [value]="r.accountId" [disabled]="!!reason">
+                        <span class="mono">{{ r.maskedAccountNumber }}</span>
+                        <span class="currency-chip">{{ r.currency }}</span>
+                        @if (reason) {
+                          <span class="opt-sub">{{ reason }}</span>
+                        }
+                      </mat-radio-button>
+                    }
+                  </mat-radio-group>
+                  @if (form.controls.toAccountId.touched && form.controls.toAccountId.invalid) {
+                    <p class="field-error">Choose one of the recipient's accounts.</p>
+                  }
+                </fieldset>
+              }
+            }
+
+            @let mismatch = form.getError('currencyMismatch');
+            @if (form.hasError('sameAccount')) {
+              <app-form-alert kind="error">You can't send money to the same account it comes from.</app-form-alert>
+            } @else if (mismatch) {
+              <app-form-alert kind="error">
+                Currencies don't match: you are sending {{ mismatch.from }}, but the recipient account is in
+                {{ mismatch.to }}. Use an account in the same currency, or convert the money first.
+              </app-form-alert>
+            }
+
+            <!-- Amount -->
+            <mat-form-field>
+              <mat-label>Amount</mat-label>
+              <input matInput formControlName="amount" inputmode="decimal" autocomplete="off" />
+              @if (fromAccount(); as a) {
+                <span matTextSuffix>&nbsp;{{ a.currency }}</span>
+              }
+              <mat-hint>
+                @if (fromAccount(); as a) {
+                  Available {{ a.balance | money: a.currency }} ·
+                }
+                Max {{ limits.amountMax | money: (fromAccount()?.currency ?? 'GEL') }}
+              </mat-hint>
+              <mat-error>{{ fieldError(form.controls.amount, 'Amount') }}</mat-error>
+            </mat-form-field>
+
+            @if (overBalance()) {
+              <app-form-alert kind="info">
+                The amount is more than the available balance. You can still continue, but the bank will likely decline it.
+              </app-form-alert>
+            }
+
+            <!-- Description -->
+            <mat-form-field>
+              <mat-label>Description (optional)</mat-label>
+              <textarea
+                matInput
+                formControlName="description"
+                rows="2"
+                [maxlength]="limits.descriptionMaxLength"
+              ></textarea>
+              <mat-hint align="end">{{ form.controls.description.value.length }}/{{ limits.descriptionMaxLength }}</mat-hint>
+              <mat-error>{{ fieldError(form.controls.description, 'Description') }}</mat-error>
+            </mat-form-field>
+
+            <div class="submit-row">
+              <button mat-flat-button type="submit">
+                Review transfer
+                <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+}

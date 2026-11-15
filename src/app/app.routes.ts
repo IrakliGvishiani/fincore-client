@@ -87,7 +87,30 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/accounts/account-detail-page.component').then((m) => m.AccountDetailPageComponent),
           },
-          { path: 'transfers', ...placeholder('Transfers', 5) },
+          {
+            path: 'transfers',
+            title: 'Transfers',
+            loadComponent: () =>
+              import('./features/transfers/transfers-list-page.component').then((m) => m.TransfersListPageComponent),
+          },
+          {
+            path: 'transfers/new',
+            title: 'New transfer',
+            loadComponent: () =>
+              import('./features/transfers/new-transfer/new-transfer-page.component').then(
+                (m) => m.NewTransferPageComponent,
+              ),
+          },
+          {
+            // Digits only, so unknown paths fall through to the not-found page.
+            matcher: (segments) =>
+              segments.length === 2 && segments[0].path === 'transfers' && /^\d+$/.test(segments[1].path)
+                ? { consumed: segments, posParams: { id: segments[1] } }
+                : null,
+            title: 'Transfer',
+            loadComponent: () =>
+              import('./features/transfers/transfer-detail-page.component').then((m) => m.TransferDetailPageComponent),
+          },
           { path: 'recipients', ...placeholder('Saved recipients', 6) },
           { path: 'conversions', ...placeholder('Currency conversion', 7) },
           { path: 'cards', ...placeholder('Virtual cards', 8) },

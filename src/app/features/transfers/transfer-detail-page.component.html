@@ -1,0 +1,88 @@
+<a mat-button routerLink="/transfers" class="back">
+  <mat-icon>arrow_back</mat-icon>
+  Transfer history
+</a>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading transfer…" />
+  }
+
+  @case ('not-found') {
+    <app-state-panel kind="empty" icon="search_off" title="Transfer not found" message="This transfer doesn't exist or isn't one of yours.">
+      <a mat-flat-button routerLink="/transfers">Back to transfers</a>
+    </app-state-panel>
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load the transfer" [message]="error()">
+      <button mat-flat-button type="button" (click)="load()">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (transfer(); as t) {
+      <mat-card appearance="outlined">
+        <mat-card-content class="content">
+          <div class="head">
+            <div>
+              <div class="label">Transfer #{{ t.id }}</div>
+              <div class="amount">{{ t.amount | money: t.currency }}</div>
+            </div>
+            <app-status-badge [status]="t.status" />
+          </div>
+
+          @if (t.status === 'Failed') {
+            <app-form-alert kind="error">{{ t.failureReason || 'The transfer failed. No reason was given.' }}</app-form-alert>
+          } @else if (t.status === 'Pending') {
+            <app-form-alert kind="info">This transfer is still being processed.</app-form-alert>
+          }
+
+          <dl class="facts">
+            <div>
+              <dt>From account</dt>
+              <dd>
+                <span class="mono">{{ t.fromAccountNumber }}</span>
+                <app-copy-button [value]="t.fromAccountNumber" label="account number" />
+              </dd>
+            </div>
+            <div>
+              <dt>To account</dt>
+              <dd>
+                <span class="mono">{{ t.toAccountNumber }}</span>
+                <app-copy-button [value]="t.toAccountNumber" label="account number" />
+              </dd>
+            </div>
+            <div>
+              <dt>Currency</dt>
+              <dd>{{ t.currency }}</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{{ t.createdAt | utcDate: 'medium' }}</dd>
+            </div>
+            <div>
+              <dt>Completed</dt>
+              <dd>{{ t.completedAt ? (t.completedAt | utcDate: 'medium') : '—' }}</dd>
+            </div>
+            <div class="wide">
+              <dt>Description</dt>
+              <dd class="description">{{ t.description || '—' }}</dd>
+            </div>
+          </dl>
+
+          <div class="actions">
+            <button mat-flat-button type="button" [disabled]="downloading()" (click)="downloadReceipt()">
+              <mat-icon>download</mat-icon>
+              {{ downloading() ? 'Downloading…' : 'Download receipt' }}
+            </button>
+            <a mat-button routerLink="/transfers/new">
+              <mat-icon>send</mat-icon>
+              New transfer
+            </a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+}
