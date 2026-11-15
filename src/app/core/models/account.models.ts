@@ -2,7 +2,7 @@ import { IsoDateString } from './common';
 import { AccountStatus, CurrencyCode, EntryType } from './enums';
 
 export interface AccountDto {
-  /** Being added to AccountForGettingDto on the backend; used as bankAccountId for cards. */
+  /** AccountForGettingDto.Id (confirmed in backend code); used as bankAccountId for cards. */
   id: number;
   accountNumber: string;
   name: string;

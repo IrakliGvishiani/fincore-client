@@ -1,0 +1,93 @@
+.summary {
+  margin: -8px 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.account-card {
+  cursor: pointer;
+  transition:
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--mat-sys-primary);
+    box-shadow: var(--mat-sys-level1);
+    outline: none;
+  }
+
+  &.closed {
+    opacity: 0.65;
+  }
+
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 16px;
+  }
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.currency {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-primary);
+  letter-spacing: 0.05em;
+}
+
+.name {
+  margin: 4px 0 0;
+  font: var(--mat-sys-title-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.number {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  color: var(--mat-sys-on-surface-variant);
+
+  .mono {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.balance {
+  margin-top: 4px;
+  font: var(--mat-sys-headline-small);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.opened {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

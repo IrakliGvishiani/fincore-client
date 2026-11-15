@@ -82,6 +82,30 @@ export function validatePhotoFile(file: File): string | null {
   return null;
 }
 
+/** Positive decimal with at most 2 fractional digits, as typed (`10`, `10.5`, `10.50`). */
+export const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
+
+/**
+ * Money amount typed as text: format (max 2 decimals), then `min`/`max`.
+ * Errors: `{ amountFormat }`, `{ amountMin: { min } }`, `{ amountMax: { max } }`. Empty is left to `required`.
+ */
+export function amountValidator(min: number, max: number): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const raw = typeof control.value === 'string' ? control.value.trim().replace(',', '.') : String(control.value ?? '');
+    if (!raw) return null;
+    if (!AMOUNT_PATTERN.test(raw)) return { amountFormat: true };
+    const value = Number(raw);
+    if (value < min) return { amountMin: { min } };
+    if (value > max) return { amountMax: { max } };
+    return null;
+  };
+}
+
+/** Parses an amount typed into a field validated by `amountValidator` (accepts `,` as decimal separator). */
+export function parseAmount(value: unknown): number {
+  return Number(String(value ?? '').trim().replace(',', '.'));
+}
+
 /** Trims string inputs before the payload is built. */
 export function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';

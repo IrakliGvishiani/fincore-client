@@ -16,7 +16,14 @@ export function fieldError(control: AbstractControl | null, label: string, messa
   if (errors['email']) return messages.email ?? 'Enter a valid email address.';
   if (errors['maxlength']) return `${label} must be at most ${errors['maxlength'].requiredLength} characters.`;
   if (errors['minlength']) return `${label} must be at least ${errors['minlength'].requiredLength} characters.`;
+  if (errors['amountFormat']) return 'Enter a positive number with up to 2 decimals.';
+  if (errors['amountMin']) return `${label} must be at least ${formatLimit(errors['amountMin'].min)}.`;
+  if (errors['amountMax']) return `${label} cannot exceed ${formatLimit(errors['amountMax'].max)}.`;
   if (errors['passwordPolicy']) return 'Password does not meet all requirements below.';
   if (errors['mismatch']) return messages.mismatch ?? 'Passwords do not match.';
   return `${label} is invalid.`;
+}
+
+function formatLimit(value: number): string {
+  return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

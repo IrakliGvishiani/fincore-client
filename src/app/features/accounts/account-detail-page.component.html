@@ -1,0 +1,102 @@
+<a mat-button routerLink="/accounts" class="back">
+  <mat-icon>arrow_back</mat-icon>
+  All accounts
+</a>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading account…" />
+  }
+
+  @case ('not-found') {
+    <app-state-panel
+      kind="empty"
+      icon="search_off"
+      title="Account not found"
+      [message]="'There is no account ' + accountNumber() + ' among your accounts.'"
+    >
+      <a mat-flat-button routerLink="/accounts">Back to accounts</a>
+    </app-state-panel>
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load the account" [message]="error()">
+      <button mat-flat-button type="button" (click)="load()">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (account(); as a) {
+      <mat-card appearance="outlined" class="summary" [class.closed]="a.status === 'Closed'">
+        <mat-card-content>
+          <div class="summary-main">
+            <div class="identity">
+              <div class="title-row">
+                <h1 class="name">{{ a.name }}</h1>
+                <app-status-badge [status]="a.status" />
+              </div>
+              <div class="number">
+                <span class="mono">{{ a.accountNumber }}</span>
+                <app-copy-button [value]="a.accountNumber" label="account number" />
+              </div>
+              <div class="meta">{{ a.currency }} · Opened {{ a.createdAt | utcDate: 'mediumDate' }}</div>
+            </div>
+
+            <div class="balance-block">
+              <div class="balance-label">Available balance</div>
+              <div class="balance">{{ a.balance | money: a.currency }}</div>
+            </div>
+          </div>
+
+          @if (a.status === 'Frozen') {
+            <p class="status-note">
+              <mat-icon>ac_unit</mat-icon>
+              This account is frozen by the bank. Deposits and closing are unavailable until it is unfrozen.
+            </p>
+          } @else if (a.status === 'Closed') {
+            <p class="status-note">
+              <mat-icon>lock</mat-icon>
+              This account is closed. Its statement stays available below.
+            </p>
+          }
+
+          <div class="actions">
+            <span [matTooltip]="rules().deposit ?? ''">
+              <button mat-flat-button type="button" [disabled]="!!rules().deposit" (click)="deposit()">
+                <mat-icon>add_card</mat-icon>
+                Deposit
+              </button>
+            </span>
+            <span [matTooltip]="rules().rename ?? ''">
+              <button mat-stroked-button type="button" [disabled]="!!rules().rename" (click)="rename()">
+                <mat-icon>edit</mat-icon>
+                Rename
+              </button>
+            </span>
+            <span [matTooltip]="rules().close ?? ''">
+              <button
+                mat-stroked-button
+                type="button"
+                class="danger"
+                [disabled]="!!rules().close || closing()"
+                (click)="close()"
+              >
+                <mat-icon>block</mat-icon>
+                {{ closing() ? 'Closing…' : 'Close account' }}
+              </button>
+            </span>
+          </div>
+          @if (a.status === 'Active' && rules().close; as reason) {
+            <p class="hint">{{ reason }}</p>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="statement-card">
+        <mat-card-content>
+          <app-account-statement [accountNumber]="a.accountNumber" [currency]="a.currency" />
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+}

@@ -58,6 +58,41 @@ body {
   color: var(--mat-sys-primary);
 }
 
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+
+  .page-title {
+    margin: 0;
+  }
+}
+
+.mono {
+  font-family: ui-monospace, 'Roboto Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+// ---- Dialog forms (MatDialog content) ----
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px !important;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.dialog-lead {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 // ---- Auth pages (inside AuthLayoutComponent's card) ----
 .auth-form {
   display: flex;

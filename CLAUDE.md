@@ -19,7 +19,8 @@ Graduation project: digital banking simulator. This repo is the **Angular 19** f
 1. Foundation ✅ (proxy, env, models, ApiClient, AuthService, interceptors, guards, shell, toasts)
 2. Auth screens ✅ (login, register, confirm + resend cooldown, forgot, reset; profile in user menu)
 3. Profile ✅ (view, edit name/phone, photo upload/remove)
-4. Accounts · 5. Transfers · 6. Saved recipients · 7. Conversions · 8. Cards + payments · 9. Dashboard/analytics · 10. Manager panel · 11. Admin panel · 12. Docker/nginx
+4. Accounts ✅ (list, open, detail, rename, deposit, close, statement + CSV export)
+5. Transfers · 6. Saved recipients · 7. Conversions · 8. Cards + payments · 9. Dashboard/analytics · 10. Manager panel · 11. Admin panel · 12. Docker/nginx
 
 ## Project layout
 ```
@@ -29,9 +30,9 @@ src/app/core/interceptors  errorInterceptor (outer) -> authInterceptor (inner, s
 src/app/core/guards     authGuard, guestGuard, roleGuard(...roles), homeRedirect
 src/app/core/models     DTO mirrors + enums (one file per feature, barrel index.ts)
 src/app/core/notify     ToastService (MatSnackBar)
-src/app/core/util       idempotency, file download (base64 -> Blob), UTC date parsing, cooldown (rate-limit countdown persisted in sessionStorage)
+src/app/core/util       idempotency, file download (base64 -> Blob), UTC date parsing, cooldown (rate-limit countdown persisted in sessionStorage), csv (RFC 4180 escaping, formula guard, UTF-8 BOM, downloadCsv)
 src/app/layout          ShellComponent (role-based sidenav), AuthLayoutComponent, nav config
-src/app/shared          reusable UI/pipes: forms/ (validators mirroring backend rules incl. notBlank + PHOTO_RULES/validatePhotoFile, fieldError, applyServerErrors/setServerError, PasswordRulesComponent), ui/ (FormAlertComponent, ConfirmDialogComponent + confirmDialog(), initialsOf)
+src/app/shared          reusable UI/pipes: forms/ (validators mirroring backend rules incl. notBlank, amountValidator/parseAmount, PHOTO_RULES/validatePhotoFile; fieldError; applyServerErrors/setServerError; PasswordRulesComponent), ui/ (FormAlertComponent, StatePanelComponent loading/error/empty, StatusBadgeComponent, CopyButtonComponent, ConfirmDialogComponent + confirmDialog(), initialsOf), pipes/ (utcDate, money)
 src/app/features/<x>    feature pages + <x>.api.ts typed service
 ```
 
@@ -57,7 +58,7 @@ src/app/features/<x>    feature pages + <x>.api.ts typed service
 
 **profile** (any authenticated): `GET profile` → ProfileDto · `PATCH profile?firstName&lastName&phoneNumber` (**query params**, no body; at least one; names non-blank ≤100; phone `+995XXXXXXXXX`, cannot be cleared; duplicate → 400 "This phone number is already in use") → ProfileDto · `PUT profile/photo` multipart field `file` (JPEG/PNG/WebP by magic bytes, ≤ 2 × 1024 × 1024 bytes; Cloudinary, resized 256×256) → `{photoUrl}` · `DELETE profile/photo` (204; also succeeds with no photo)
 
-**account** (Customer): `GET account` → AccountForGettingDto[] (owner adds `id`) · `GET account/{no}` · `GET account/{no}/statement?from&to&pageNumber&pageSize(15)` → `{items,totalCount}` · `POST account?currency=&name=` (query params, max 5 open) → `{accountNumber,createdAt}` · `POST account/{no}/close` (balance 0) · `PATCH account/{no}/name` `{name}` (1–50) · `POST account/{no}/deposit` header `Idempotency-Key`(≤50) body `{amount}` (0.01–10,100) · `GET account/analytics?fromDate&toDate`
+**account** (Customer; controller-level `[Authorize(Roles = Customer)]`): `GET account` → AccountForGettingDto[] `{id,accountNumber,name,balance,currency,status,createdAt}` (`id` confirmed in code) · `GET account/{no}` (404 "Account not found" for other users) · `GET account/{no}/statement?from&to&pageNumber&pageSize(15, max 100)` → `{items,totalCount}`, newest first; entries `{ledgerEntryId,reference,type,amount,currency,createdAt}`; **Credit = money in, Debit = money out** on the customer account; `from`/`to` are compared with UTC `CreatedAt` (`to` + 1 day), so day boundaries are UTC days · `POST account?currency=&name=` (**query params**, no body; name optional ≤50, default "<CUR> account"; max 5 non-closed → 400 "You can only have up to 5 open accounts.") → `{accountNumber,createdAt}` · `POST account/{no}/close` (Active **and** balance 0, else domain error; 204) · `PATCH account/{no}/name` body `{name}` (1–50; not on Closed) → AccountForGettingDto · `POST account/{no}/deposit` header `Idempotency-Key` (≤50) body `{amount}` (`[Range(0.01, 10100)]`, 2 decimals; Active only) → AccountForGettingDto. Known backend bug: replaying a deposit with the same key always returns 409 "IdempotencyKey has already been used for a different deposit" (it looks for a Debit entry on the customer account) · `GET account/analytics?fromDate&toDate`
 
 **transfers** (Customer): `GET transfers?pageNumber&pageSize` → `{items: MyTransferDto[], totalCount}` (no filters) · `GET transfers/{id}` → TransferDto · `POST transfers/recipients/lookup` `{personalNumber}` → `[{accountId,maskedAccountNumber,currency}]` (rate limited 1/s, 20/10min) · `POST transfers/by-account-number` header `Idempotency-Key`(≤100) `{fromAccountNumber,toAccountNumber,amount(≤1,000,000),description?(≤500)}` · `POST transfers/by-recipient` header key `{fromAccountNumber,toAccountId,amount,description?}` · `GET transfers/{id}/receipt`
 
@@ -88,6 +89,7 @@ src/app/features/<x>    feature pages + <x>.api.ts typed service
 - Pages pass `{ silent: true }` and show errors inline (FormAlert or field `server` errors), never as toasts. Unconfirmed login → `/confirm-email?email=` with navigation state `reason`. After login: `safeReturnUrl(returnUrl)` (internal paths only) or the role home.
 - Profile for the user menu: `AuthService.ensureProfile()` (deduplicated) after login, after restore, and when the shell opens.
 - **Profile page** (`features/profile`, `/profile`, all roles): `ProfileApi` (update/setPhoto/deletePhoto); GET goes through `AuthService.loadProfile()`. The page reads and writes `AuthService.profile` (`setProfile`), so the shell menu updates immediately. Edit sends only changed fields (phone typed as 9 digits after a fixed `+995`; phone required only if one is already set). Server messages map to fields via `profileFieldError` (error-messages.ts). Photo: client check (type + size) → local preview (object URL) → "Save photo" uploads; remove asks via `confirmDialog`. No change-password UI (no endpoint).
+- **Accounts** (`features/accounts`, Customer): `AccountsApi` (+ `ACCOUNT_LIMITS`, `statementAll()` progress stream). `/accounts` = cards (active → frozen → closed), copy account number, "Open account" dialog (disabled at 5 open). `/accounts/:accountNumber` = summary + actions with disabled reasons mirroring the domain: Deposit only Active; Rename not Closed; Close only Active with balance 0 (`confirmDialog`). Customers cannot freeze/unfreeze. Deposit dialog keeps one `IdempotencyKeyHolder` key per payload (made on open, reused on retry/double-click, new when the amount changes, reset after success); the page re-reads the account and statement after every deposit dialog closes. `AccountStatementComponent`: date range (native date adapter provided locally), paginator, Credit green +, Debit red −, CSV export with progress bar.
 
 ## Error handling
 - Exception responses: CommonResponse with `message` (404, 400, 405, 401, 409, 503, and **500 for domain-rule errors**, still meaningful messages).
@@ -97,7 +99,7 @@ src/app/features/<x>    feature pages + <x>.api.ts typed service
 ## Special requirements
 - Idempotency: `newIdempotencyKey()` (UUID) per user intent; reuse on retry/double-click; regenerate after success or when inputs change.
 - `rowVersion` is not exposed; concurrency shows as 409 → generic message.
-- Statement export: **client-side CSV** (fetch all pages for the range). No PDF.
+- Statement export: **client-side CSV** (fetch all pages for the range, pageSize 100, sequentially; cap 10,000 rows with a confirm warning above it; cancellable; columns Date (local), Type, signed Amount, Currency, Reference, Entry ID; UTF-8 BOM). No PDF.
 - Hidden for now (no backend): change password, scheduled transfers, transfer filters, role changes, manager user search, ban status in user list.
 
 ## Role → screens

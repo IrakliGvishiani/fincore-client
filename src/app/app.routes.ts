@@ -75,7 +75,18 @@ export const routes: Routes = [
         canActivateChild: [roleGuard('Customer')],
         children: [
           { path: 'dashboard', ...placeholder('Dashboard', 9) },
-          { path: 'accounts', ...placeholder('Accounts', 4) },
+          {
+            path: 'accounts',
+            title: 'Accounts',
+            loadComponent: () =>
+              import('./features/accounts/accounts-list-page.component').then((m) => m.AccountsListPageComponent),
+          },
+          {
+            path: 'accounts/:accountNumber',
+            title: 'Account',
+            loadComponent: () =>
+              import('./features/accounts/account-detail-page.component').then((m) => m.AccountDetailPageComponent),
+          },
           { path: 'transfers', ...placeholder('Transfers', 5) },
           { path: 'recipients', ...placeholder('Saved recipients', 6) },
           { path: 'conversions', ...placeholder('Currency conversion', 7) },

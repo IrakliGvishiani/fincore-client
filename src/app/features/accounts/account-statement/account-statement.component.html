@@ -1,0 +1,117 @@
+<section class="statement" aria-labelledby="statement-title">
+  <div class="statement-header">
+    <div>
+      <h2 id="statement-title" class="section-title">Statement</h2>
+      <p class="range-label">{{ rangeLabel() }} · {{ totalCount() }} {{ totalCount() === 1 ? 'entry' : 'entries' }}</p>
+    </div>
+
+    @if (exportProgress(); as p) {
+      <button mat-button type="button" (click)="cancelExport()">
+        <mat-icon>close</mat-icon>
+        Cancel export
+      </button>
+    } @else {
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="state() !== 'ready' || totalCount() === 0"
+        [matTooltip]="'Exports every entry in the selected period (up to ' + maxExportRows.toLocaleString('en-US') + ')'"
+        (click)="exportCsv()"
+      >
+        <mat-icon>download</mat-icon>
+        Download CSV
+      </button>
+    }
+  </div>
+
+  @if (exportProgress(); as p) {
+    <div class="export-progress" role="status">
+      <mat-progress-bar mode="determinate" [value]="p.total ? (p.loaded / p.total) * 100 : 0" />
+      <span>Preparing CSV… {{ p.loaded.toLocaleString('en-US') }} of {{ p.total.toLocaleString('en-US') }} entries</span>
+    </div>
+  }
+
+  <form class="filters" [formGroup]="rangeForm" (ngSubmit)="applyRange()">
+    <mat-form-field class="range-field" subscriptSizing="dynamic">
+      <mat-label>Date range</mat-label>
+      <mat-date-range-input [rangePicker]="picker" [max]="today">
+        <input matStartDate formControlName="start" placeholder="From" />
+        <input matEndDate formControlName="end" placeholder="To" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-date-range-picker #picker />
+      <mat-hint>Both days are included.</mat-hint>
+    </mat-form-field>
+    <div class="filter-actions">
+      <button mat-flat-button type="submit">Apply</button>
+      <button mat-button type="button" (click)="clearRange()">Clear</button>
+    </div>
+  </form>
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-state-panel kind="loading" [compact]="true" message="Loading statement…" />
+    }
+    @case ('error') {
+      <app-state-panel kind="error" [compact]="true" title="Couldn't load the statement" [message]="error()">
+        <button mat-flat-button type="button" (click)="load()">Try again</button>
+      </app-state-panel>
+    }
+    @default {
+      @if (rows().length === 0) {
+        <app-state-panel
+          kind="empty"
+          [compact]="true"
+          icon="receipt_long"
+          title="No entries"
+          [message]="range().from || range().to ? 'Nothing happened on this account in the selected period.' : 'Deposits, transfers and payments will appear here.'"
+        />
+      } @else {
+        <div class="table-wrap">
+          <table mat-table [dataSource]="rows()" class="statement-table">
+            <ng-container matColumnDef="createdAt">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let row" class="nowrap">{{ row.createdAt | utcDate: 'medium' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="entry-type" [attr.data-type]="row.type">
+                  <mat-icon aria-hidden="true">{{ row.type === 'Credit' ? 'south_west' : 'north_east' }}</mat-icon>
+                  {{ row.type }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="reference">
+              <th mat-header-cell *matHeaderCellDef>Reference</th>
+              <td mat-cell *matCellDef="let row" class="reference" [matTooltip]="row.reference">{{ row.reference }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef class="num">Amount</th>
+              <td mat-cell *matCellDef="let row" class="num amount" [attr.data-type]="row.type">
+                {{ row.type === 'Debit' ? '−' : '+' }}{{ row.amount | money: row.currency }}
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="columns"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns"></tr>
+          </table>
+        </div>
+      }
+    }
+  }
+
+  <mat-paginator
+    [class.hidden]="totalCount() <= pageSizeOptions[0] && pageIndex() === 0"
+    [length]="totalCount()"
+    [pageIndex]="pageIndex()"
+    [pageSize]="pageSize()"
+    [pageSizeOptions]="pageSizeOptions"
+    [disabled]="state() === 'loading'"
+    (page)="onPage($event)"
+    aria-label="Statement pages"
+  />
+</section>

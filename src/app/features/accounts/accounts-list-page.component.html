@@ -1,0 +1,82 @@
+<div class="page-header">
+  <h1 class="page-title">Accounts</h1>
+  @if (state() === 'ready' && sorted().length) {
+    <span
+      [matTooltip]="limitReached() ? 'You can have up to ' + maxOpen + ' open accounts. Close one to open another.' : ''"
+    >
+      <button mat-flat-button type="button" [disabled]="limitReached()" (click)="openAccount()">
+        <mat-icon>add</mat-icon>
+        Open account
+      </button>
+    </span>
+  }
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading your accounts…" />
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load your accounts" [message]="error()">
+      <button mat-flat-button type="button" (click)="load()">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (sorted().length === 0) {
+      <app-state-panel
+        kind="empty"
+        icon="account_balance_wallet"
+        title="No accounts yet"
+        message="Open your first account to deposit funds, make transfers and issue virtual cards."
+      >
+        <button mat-flat-button type="button" (click)="openAccount()">
+          <mat-icon>add</mat-icon>
+          Open account
+        </button>
+      </app-state-panel>
+    } @else {
+      <p class="summary">{{ openCount() }} of {{ maxOpen }} open accounts in use.</p>
+
+      <div class="grid">
+        @for (account of sorted(); track account.accountNumber) {
+          <mat-card
+            appearance="outlined"
+            class="account-card"
+            [class.closed]="account.status === 'Closed'"
+            role="link"
+            tabindex="0"
+            [attr.aria-label]="'Open account ' + account.name"
+            (click)="openDetails(account)"
+            (keydown.enter)="openDetails(account)"
+          >
+            <mat-card-content>
+              <div class="card-top">
+                <span class="currency">{{ account.currency }}</span>
+                <app-status-badge [status]="account.status" />
+              </div>
+
+              <h2 class="name">{{ account.name }}</h2>
+
+              <div class="number">
+                <span class="mono">{{ account.accountNumber }}</span>
+                <app-copy-button [value]="account.accountNumber" label="account number" />
+              </div>
+
+              <div class="balance">{{ account.balance | money: account.currency }}</div>
+
+              <div class="card-bottom">
+                <span class="opened">Opened {{ account.createdAt | utcDate: 'mediumDate' }}</span>
+                <a mat-button [routerLink]="['/accounts', account.accountNumber]" (click)="$event.stopPropagation()">
+                  Details
+                  <mat-icon iconPositionEnd>chevron_right</mat-icon>
+                </a>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    }
+  }
+}
