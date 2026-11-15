@@ -1,0 +1,84 @@
+<mat-toolbar class="topbar">
+  @if (isHandset()) {
+    <button mat-icon-button type="button" aria-label="Toggle navigation" (click)="toggleNav()">
+      <mat-icon>menu</mat-icon>
+    </button>
+  }
+
+  <a class="brand" routerLink="/">
+    <mat-icon class="brand-icon">account_balance</mat-icon>
+    <span>FinCore</span>
+  </a>
+
+  <span class="spacer"></span>
+
+  @if (auth.primaryRole(); as role) {
+    <span class="role-badge" [attr.data-role]="role">{{ role }}</span>
+  }
+
+  <button mat-button type="button" class="user-button" [matMenuTriggerFor]="userMenu" aria-label="Account menu">
+    @if (auth.profile()?.profilePhotoUrl; as photo) {
+      <img class="avatar" [src]="photo" alt="" />
+    } @else {
+      <span class="avatar avatar-initials">{{ initials() }}</span>
+    }
+    @if (!isHandset()) {
+      <span class="user-name">{{ auth.displayName() }}</span>
+    }
+    <mat-icon iconPositionEnd>expand_more</mat-icon>
+  </button>
+
+  <mat-menu #userMenu="matMenu" xPosition="before">
+    <div class="menu-header">
+      <div class="menu-name">{{ auth.displayName() }}</div>
+      <div class="menu-email">{{ auth.claims()?.email }}</div>
+    </div>
+    <mat-divider />
+    <a mat-menu-item routerLink="/profile">
+      <mat-icon>person</mat-icon>
+      <span>Profile</span>
+    </a>
+    <button mat-menu-item type="button" (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      <span>Sign out</span>
+    </button>
+  </mat-menu>
+</mat-toolbar>
+
+<mat-sidenav-container class="container">
+  <mat-sidenav
+    class="sidenav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="navOpen()"
+    (closedStart)="mobileNavOpen.set(false)"
+  >
+    <nav aria-label="Main">
+      @for (section of sections(); track section.title) {
+        <mat-nav-list>
+          @if (section.title) {
+            <h3 matSubheader class="section-title">{{ section.title }}</h3>
+          }
+          @for (item of section.items; track item.route) {
+            <a
+              mat-list-item
+              [routerLink]="item.route"
+              routerLinkActive
+              #rla="routerLinkActive"
+              [routerLinkActiveOptions]="{ exact: !!item.exact }"
+              [activated]="rla.isActive"
+            >
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
+        </mat-nav-list>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="content">
+    <main class="page">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

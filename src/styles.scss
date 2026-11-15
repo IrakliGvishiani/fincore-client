@@ -1,1 +1,160 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+html {
+  color-scheme: light;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$violet-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}
+
+// ---- Page primitives shared by feature screens ----
+.page-title {
+  margin: 0 0 16px;
+  font: var(--mat-sys-headline-small);
+}
+
+.status-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  text-align: center;
+
+  h1 {
+    margin: 0;
+    font: var(--mat-sys-headline-small);
+  }
+
+  p {
+    margin: 0 0 16px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.status-icon {
+  width: 56px;
+  height: 56px;
+  font-size: 56px;
+  color: var(--mat-sys-primary);
+}
+
+// ---- Auth pages (inside AuthLayoutComponent's card) ----
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .auth-heading {
+    margin: 0;
+    font: var(--mat-sys-headline-small);
+  }
+
+  .auth-subtitle {
+    margin: -4px 0 4px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .code-input {
+    letter-spacing: 0.4em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .auth-submit {
+    width: 100%;
+    height: 44px;
+  }
+
+  .auth-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    font: var(--mat-sys-body-medium);
+  }
+
+  .auth-footer {
+    margin: 4px 0 0;
+    text-align: center;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  a:not(.mat-mdc-button-base) {
+    color: var(--mat-sys-primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.button-spinner {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+// ---- Toasts (ToastService → MatSnackBar panelClass) ----
+.toast.toast-success {
+  @include mat.snack-bar-overrides(
+    (
+      container-color: #1b5e20,
+      supporting-text-color: #ffffff,
+      button-color: #c8e6c9,
+    )
+  );
+}
+
+.toast.toast-error {
+  @include mat.snack-bar-overrides(
+    (
+      container-color: var(--mat-sys-error),
+      supporting-text-color: var(--mat-sys-on-error),
+      button-color: var(--mat-sys-on-error),
+    )
+  );
+}
+
+.toast.toast-info {
+  @include mat.snack-bar-overrides(
+    (
+      container-color: var(--mat-sys-inverse-surface),
+      supporting-text-color: var(--mat-sys-inverse-on-surface),
+      button-color: var(--mat-sys-inverse-primary),
+    )
+  );
+}

@@ -1,3 +1,126 @@
 import { Routes } from '@angular/router';
+import { authGuard, guestGuard, homeRedirect, roleGuard } from './core/guards/auth.guards';
+import { AuthLayoutComponent } from './layout/auth-layout/auth-layout.component';
+import { ShellComponent } from './layout/shell/shell.component';
 
-export const routes: Routes = [];
+/** Temporary target for screens built in later steps (`step` = implementation-plan step). */
+const placeholder = (title: string, step: number) => ({
+  title,
+  loadComponent: () =>
+    import('./features/placeholder/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
+  data: { title, step },
+});
+
+export const routes: Routes = [
+  // Public auth pages (guests only).
+  {
+    path: '',
+    component: AuthLayoutComponent,
+    canActivate: [guestGuard],
+    children: [
+      {
+        path: 'login',
+        title: 'Sign in',
+        loadComponent: () => import('./features/auth/login/login-page.component').then((m) => m.LoginPageComponent),
+      },
+      {
+        path: 'register',
+        title: 'Create account',
+        loadComponent: () =>
+          import('./features/auth/register/register-page.component').then((m) => m.RegisterPageComponent),
+      },
+      {
+        path: 'confirm-email',
+        title: 'Confirm email',
+        loadComponent: () =>
+          import('./features/auth/confirm-email/confirm-email-page.component').then((m) => m.ConfirmEmailPageComponent),
+      },
+      {
+        path: 'forgot-password',
+        title: 'Forgot password',
+        loadComponent: () =>
+          import('./features/auth/forgot-password/forgot-password-page.component').then(
+            (m) => m.ForgotPasswordPageComponent,
+          ),
+      },
+      {
+        // Email link: /reset-password?email=…&token=… (see ResetPasswordPageComponent).
+        path: 'reset-password',
+        title: 'Reset password',
+        loadComponent: () =>
+          import('./features/auth/reset-password/reset-password-page.component').then(
+            (m) => m.ResetPasswordPageComponent,
+          ),
+      },
+    ],
+  },
+
+  // Signed-in area.
+  {
+    path: '',
+    component: ShellComponent,
+    canActivate: [authGuard],
+    canActivateChild: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: homeRedirect },
+      {
+        path: 'profile',
+        title: 'Profile',
+        loadComponent: () => import('./features/profile/profile-page.component').then((m) => m.ProfilePageComponent),
+      },
+
+      // Customer
+      {
+        path: '',
+        canActivateChild: [roleGuard('Customer')],
+        children: [
+          { path: 'dashboard', ...placeholder('Dashboard', 9) },
+          { path: 'accounts', ...placeholder('Accounts', 4) },
+          { path: 'transfers', ...placeholder('Transfers', 5) },
+          { path: 'recipients', ...placeholder('Saved recipients', 6) },
+          { path: 'conversions', ...placeholder('Currency conversion', 7) },
+          { path: 'cards', ...placeholder('Virtual cards', 8) },
+          { path: 'analytics', ...placeholder('Analytics', 9) },
+        ],
+      },
+
+      // Manager + Admin
+      {
+        path: 'manager',
+        canActivateChild: [roleGuard('Manager', 'Admin')],
+        children: [
+          { path: '', pathMatch: 'full', ...placeholder('Monitoring overview', 10) },
+          { path: 'transfers', ...placeholder('Transfer monitoring', 10) },
+          { path: 'accounts', ...placeholder('Account monitoring', 10) },
+          { path: 'conversions', ...placeholder('Conversion monitoring', 10) },
+          { path: 'suspicious', ...placeholder('Suspicious activity', 10) },
+        ],
+      },
+
+      // Admin
+      {
+        path: 'admin',
+        canActivateChild: [roleGuard('Admin')],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'users' },
+          { path: 'users', ...placeholder('Users', 11) },
+          { path: 'staff/new', ...placeholder('Create staff account', 11) },
+          { path: 'audit-logs', ...placeholder('Audit logs', 11) },
+        ],
+      },
+
+      {
+        path: 'forbidden',
+        title: 'Access denied',
+        loadComponent: () =>
+          import('./features/errors/forbidden-page.component').then((m) => m.ForbiddenPageComponent),
+      },
+    ],
+  },
+
+  {
+    path: '**',
+    title: 'Not found',
+    loadComponent: () => import('./features/errors/not-found-page.component').then((m) => m.NotFoundPageComponent),
+  },
+];

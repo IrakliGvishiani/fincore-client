@@ -1,0 +1,48 @@
+<form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <h1 class="auth-heading">Sign in</h1>
+  <p class="auth-subtitle">Welcome back. Sign in with your email and password.</p>
+
+  @if (error(); as message) {
+    <app-form-alert kind="error">{{ message }}</app-form-alert>
+  }
+
+  <mat-form-field>
+    <mat-label>Email</mat-label>
+    <input matInput formControlName="email" type="email" autocomplete="username" inputmode="email" />
+    <mat-error>{{ fieldError(form.controls.email, 'Email', { pattern: 'Enter a valid email address.' }) }}</mat-error>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Password</mat-label>
+    <input
+      matInput
+      formControlName="password"
+      [type]="showPassword() ? 'text' : 'password'"
+      autocomplete="current-password"
+    />
+    <button
+      mat-icon-button
+      matSuffix
+      type="button"
+      [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+      (click)="showPassword.set(!showPassword())"
+    >
+      <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+    </button>
+    <mat-error>{{ fieldError(form.controls.password, 'Password') }}</mat-error>
+  </mat-form-field>
+
+  <div class="auth-links">
+    <a routerLink="/forgot-password" [queryParams]="{ email: form.controls.email.value || null }">Forgot password?</a>
+    <a routerLink="/confirm-email" [queryParams]="{ email: form.controls.email.value || null }">Confirm email</a>
+  </div>
+
+  <button mat-flat-button class="auth-submit" type="submit" [disabled]="loading()">
+    @if (loading()) {
+      <mat-spinner class="button-spinner" diameter="18" />
+    }
+    Sign in
+  </button>
+
+  <p class="auth-footer">No account yet? <a routerLink="/register">Create one</a></p>
+</form>

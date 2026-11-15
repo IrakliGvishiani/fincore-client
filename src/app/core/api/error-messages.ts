@@ -1,0 +1,155 @@
+/**
+ * The ONLY place where backend message text is matched.
+ * The backend has no error codes, so specific cases are recognized by message text.
+ * If a backend message changes, update it here.
+ */
+
+export const SERVER_MESSAGES = {
+  emailNotConfirmed: 'Email is not confirmed.',
+  bannedByAdmin: 'Your account has been banned by administrator',
+  temporarilyLocked: 'Your account is temporarily banned',
+  exchangeRateChanged: 'The exchange rate has changed',
+  invalidRefreshToken: 'Invalid or expired refresh token.',
+  confirmationCodeExpired: 'Verification code has expired.',
+  invalidConfirmationCode: 'Invalid verification code.',
+  emailAlreadyConfirmed: 'Email is already confirmed.',
+  /** Prefix shared by the resend-confirmation-code and forgot-password limits (60 s / 5 per hour). */
+  rateLimited: 'Please wait before requesting another',
+  invalidResetToken: 'Invalid reset token.',
+  /** ASP.NET Identity's text for a wrong or expired reset token. */
+  identityInvalidToken: 'Invalid token.',
+  duplicatePersonalNumber: 'Choose different personal number',
+  duplicatePhoneNumber: 'Choose different phone number',
+  duplicateEmail: 'Choose different email',
+  /** PATCH /api/profile messages ("First name cannot be empty", "... cannot exceed 100 characters", …). */
+  profileFirstName: 'First name',
+  profileLastName: 'Last name',
+  profilePhoneNumber: 'Phone number',
+  profilePhoneInUse: 'This phone number is already in use',
+} as const;
+
+export type ServerMessageKey = keyof typeof SERVER_MESSAGES;
+
+/** Generic, user-facing fallback messages. */
+export const GENERIC_MESSAGES = {
+  network: 'Cannot reach the server. Check your connection and try again.',
+  unauthorized: 'Your session has expired. Please sign in again.',
+  forbidden: "You don't have permission to perform this action.",
+  notFound: 'The requested item was not found.',
+  conflict: 'This action conflicts with a recent change. Please refresh and try again.',
+  badRequest: 'The request could not be processed. Please check your input.',
+  validation: 'Please check the highlighted fields.',
+  unavailable: 'The service is temporarily unavailable. Please try again later.',
+  server: 'Something went wrong on our side. Please try again.',
+  unknown: 'An unexpected error occurred.',
+  invalidCredentials: 'Invalid email or password',
+} as const;
+
+/** Messages that are .NET internals rather than something a user should read. */
+const TECHNICAL_MESSAGE_PATTERNS: readonly RegExp[] = [
+  /^Exception of type '.+' was thrown\.$/,
+  /^Object reference not set to an instance of an object\.?$/,
+  /^Value cannot be null\./,
+  /^Sequence contains no elements\.?$/,
+];
+
+export function isTechnicalMessage(message: string): boolean {
+  return TECHNICAL_MESSAGE_PATTERNS.some((p) => p.test(message.trim()));
+}
+
+/** Does the server message match a known backend message (prefix, case-insensitive)? */
+export function matchesServerMessage(serverMessage: string | null | undefined, key: ServerMessageKey): boolean {
+  if (!serverMessage) return false;
+  return serverMessage.trim().toLowerCase().startsWith(SERVER_MESSAGES[key].toLowerCase());
+}
+
+/** Something with an optional server message, e.g. an ApiError. */
+export interface HasServerMessage {
+  readonly status: number;
+  readonly serverMessage: string | null;
+  readonly message: string;
+}
+
+export const isEmailNotConfirmed = (e: HasServerMessage) => matchesServerMessage(e.serverMessage, 'emailNotConfirmed');
+
+export const isLockedOrBanned = (e: HasServerMessage) =>
+  matchesServerMessage(e.serverMessage, 'bannedByAdmin') || matchesServerMessage(e.serverMessage, 'temporarilyLocked');
+
+export const isExchangeRateChanged = (e: HasServerMessage) =>
+  e.status === 409 && matchesServerMessage(e.serverMessage, 'exchangeRateChanged');
+
+export const isRateLimited = (e: HasServerMessage) => matchesServerMessage(e.serverMessage, 'rateLimited');
+
+export const isEmailAlreadyConfirmed = (e: HasServerMessage) =>
+  matchesServerMessage(e.serverMessage, 'emailAlreadyConfirmed');
+
+export const isInvalidResetToken = (e: HasServerMessage) =>
+  matchesServerMessage(e.serverMessage, 'invalidResetToken') ||
+  matchesServerMessage(e.serverMessage, 'identityInvalidToken');
+
+/** Registration duplicates come back as plain 400 messages; map each to the form field it belongs to. */
+const REGISTRATION_DUPLICATES: ReadonlyArray<[ServerMessageKey, string, string]> = [
+  ['duplicateEmail', 'email', 'An account with this email already exists.'],
+  ['duplicatePersonalNumber', 'personalNumber', 'This personal number is already registered.'],
+  ['duplicatePhoneNumber', 'phoneNumber', 'This phone number is already registered.'],
+];
+
+export function registrationFieldError(e: HasServerMessage): { field: string; message: string } | null {
+  const hit = REGISTRATION_DUPLICATES.find(([key]) => matchesServerMessage(e.serverMessage, key));
+  return hit ? { field: hit[1], message: hit[2] } : null;
+}
+
+/** Profile update errors are plain 400 messages; find the field each belongs to (message shown as-is). */
+const PROFILE_FIELDS: ReadonlyArray<[ServerMessageKey, string]> = [
+  ['profileFirstName', 'firstName'],
+  ['profileLastName', 'lastName'],
+  ['profilePhoneNumber', 'phoneNumber'],
+  ['profilePhoneInUse', 'phoneNumber'],
+];
+
+export function profileFieldError(e: HasServerMessage): { field: string; message: string } | null {
+  const hit = PROFILE_FIELDS.find(([key]) => matchesServerMessage(e.serverMessage, key));
+  return hit && e.serverMessage ? { field: hit[1], message: e.serverMessage } : null;
+}
+
+/**
+ * Login error text: one generic message for unknown user (404) and wrong password (400),
+ * except unconfirmed email and locked/banned accounts, which keep their specific message.
+ */
+export function loginErrorMessage(e: HasServerMessage): string {
+  if (isEmailNotConfirmed(e) || isLockedOrBanned(e)) return e.message;
+  if (e.status === 400 || e.status === 404) return GENERIC_MESSAGES.invalidCredentials;
+  return e.message;
+}
+
+/** Picks the message shown to the user for a failed request. */
+export function resolveErrorMessage(
+  status: number,
+  serverMessage: string | null,
+  validationErrors: Record<string, string[]>,
+  title: string | null,
+): string {
+  if (status === 0) return GENERIC_MESSAGES.network;
+
+  const firstValidation = Object.values(validationErrors).flat()[0];
+  if (firstValidation) return firstValidation;
+
+  if (serverMessage && !isTechnicalMessage(serverMessage)) return serverMessage;
+
+  switch (status) {
+    case 400:
+      return title || GENERIC_MESSAGES.badRequest;
+    case 401:
+      return GENERIC_MESSAGES.unauthorized;
+    case 403:
+      return GENERIC_MESSAGES.forbidden;
+    case 404:
+      return GENERIC_MESSAGES.notFound;
+    case 409:
+      return GENERIC_MESSAGES.conflict;
+    case 503:
+      return GENERIC_MESSAGES.unavailable;
+    default:
+      return status >= 500 ? GENERIC_MESSAGES.server : GENERIC_MESSAGES.unknown;
+  }
+}
