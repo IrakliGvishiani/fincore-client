@@ -1,31 +1,34 @@
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { AccountDto, RecipientAccountDto, TransferByAccountNumberRequest, TransferByRecipientRequest } from '../../../core/models';
-import { PATTERNS, amountValidator, parseAmount, trimmed } from '../../../shared/forms/validators';
+import {
+  PATTERNS,
+  accountNumberValidator,
+  amountValidator,
+  isAccountNumber,
+  normalizeAccountNumber,
+  parseAmount,
+  trimmed,
+} from '../../../shared/forms/validators';
 import { TRANSFER_LIMITS } from '../transfers.api';
 
 export type TransferMode = 'account' | 'recipient';
 
-/** FinCore account numbers: "FC" + 16 digits (AccountNumberGenerator). Spaces are ignored. */
-export const ACCOUNT_NUMBER_PATTERN = /^FC\d{16}$/;
-
-/** "fc 1234 5678…" → "FC12345678…" */
-export function normalizeAccountNumber(value: unknown): string {
-  return String(value ?? '')
-    .replace(/\s+/g, '')
-    .toUpperCase();
+/**
+ * Reads the `?to=` query param (e.g. "Send money" on a saved recipient). Returns the normalized account
+ * number, or null when missing, not a string, too long or not an FC account number.
+ */
+export function parseToParam(raw: unknown): string | null {
+  if (typeof raw !== 'string' || raw.length > 64) return null;
+  const value = normalizeAccountNumber(raw);
+  return isAccountNumber(value) ? value : null;
 }
-
-const accountNumberFormat: ValidatorFn = (control) => {
-  const value = normalizeAccountNumber(control.value);
-  return value && !ACCOUNT_NUMBER_PATTERN.test(value) ? { pattern: true } : null;
-};
 
 export function createTransferForm() {
   return new FormGroup({
     mode: new FormControl<TransferMode>('account', { nonNullable: true }),
     fromAccountNumber: new FormControl('', { nonNullable: true, validators: Validators.required }),
     /** Mode "account" only. */
-    toAccountNumber: new FormControl('', { nonNullable: true, validators: [Validators.required, accountNumberFormat] }),
+    toAccountNumber: new FormControl('', { nonNullable: true, validators: [Validators.required, accountNumberValidator] }),
     /** Mode "recipient" only. */
     personalNumber: new FormControl('', {
       nonNullable: true,

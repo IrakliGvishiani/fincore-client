@@ -1,0 +1,110 @@
+:host {
+  display: block;
+  max-width: 880px;
+}
+
+.search {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+
+.list-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.refresh-bar {
+  position: absolute;
+  inset: 0 0 auto;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: 'avatar who saved actions';
+  align-items: center;
+  gap: 4px 16px;
+  padding: 14px 16px;
+
+  & + .row {
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  &.busy {
+    opacity: 0.5;
+  }
+
+  app-avatar {
+    grid-area: avatar;
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'avatar who'
+      'avatar saved'
+      'actions actions';
+    align-items: start;
+
+    .actions {
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+  }
+}
+
+.who {
+  grid-area: who;
+  min-width: 0;
+}
+
+.name {
+  font: var(--mat-sys-title-small);
+  overflow-wrap: anywhere;
+}
+
+.owner,
+.saved,
+.count {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.number {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.saved {
+  grid-area: saved;
+  white-space: nowrap;
+}
+
+.actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.danger-item {
+  color: var(--mat-sys-error);
+
+  mat-icon {
+    color: inherit;
+  }
+}
+
+.count {
+  margin: 8px 4px 0;
+}

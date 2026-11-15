@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -11,11 +12,19 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { distinctUntilChanged, finalize, map, startWith } from 'rxjs';
 import { ApiError } from '../../../core/api/api-error';
 import { TRANSFER_MESSAGES, isLookupRateLimited } from '../../../core/api/error-messages';
-import { AccountDto, RecipientAccountDto, TransferByAccountNumberRequest, TransferByRecipientRequest, TransferDto } from '../../../core/models';
+import {
+  AccountDto,
+  RecipientAccountDto,
+  SavedRecipientDto,
+  TransferByAccountNumberRequest,
+  TransferByRecipientRequest,
+  TransferDto,
+} from '../../../core/models';
 import { ToastService } from '../../../core/notify/toast.service';
 import { createCooldown } from '../../../core/util/cooldown';
 import { IdempotencyKeyHolder } from '../../../core/util/idempotency';
@@ -26,6 +35,10 @@ import { FormAlertComponent } from '../../../shared/ui/form-alert.component';
 import { StatePanelComponent } from '../../../shared/ui/state-panel.component';
 import { StatusBadgeComponent } from '../../../shared/ui/status-badge.component';
 import { AccountsApi } from '../../accounts/accounts.api';
+import { openAddRecipientDialog } from '../../recipients/dialogs/add-recipient-dialog.component';
+import { filterRecipients, findRecipientByNumber, ownerName } from '../../recipients/recipient-utils';
+import { RecipientsApi } from '../../recipients/recipients.api';
+import { AvatarComponent } from '../../../shared/ui/avatar.component';
 import { TRANSFER_LIMITS, TransfersApi } from '../transfers.api';
 import {
   TransferDraft,
@@ -34,6 +47,7 @@ import {
   buildDraft,
   createTransferForm,
   draftFingerprint,
+  parseToParam,
   transferRulesValidator,
 } from './transfer-form';
 import { TransferReviewData, TransferReviewDialogComponent } from './transfer-review-dialog.component';
@@ -64,6 +78,8 @@ interface TransferResult {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatAutocompleteModule,
+    MatTooltipModule,
     MatRadioModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -71,6 +87,7 @@ interface TransferResult {
     FormAlertComponent,
     StatePanelComponent,
     StatusBadgeComponent,
+    AvatarComponent,
   ],
   templateUrl: './new-transfer-page.component.html',
   styleUrl: './new-transfer-page.component.scss',
@@ -82,8 +99,12 @@ export class NewTransferPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(ToastService);
 
+  private readonly recipientsApi = inject(RecipientsApi);
+
   /** Query param: preselected source account. */
   readonly from = input<string>();
+  /** Query param: recipient account number (e.g. "Send money" on a saved recipient). Validated by parseToParam. */
+  readonly to = input<unknown>();
 
   protected readonly limits = TRANSFER_LIMITS;
   protected readonly fieldError = fieldError;
@@ -116,6 +137,18 @@ export class NewTransferPageComponent implements OnInit {
     const amount = parseAmount(this.value().amount);
     return !!from && amount > 0 && amount > from.balance;
   });
+
+  // ---- Saved recipients (account-number mode) ----
+  protected readonly ownerName = ownerName;
+  protected readonly savedState = signal<LoadState>('loading');
+  protected readonly saved = signal<SavedRecipientDto[]>([]);
+  private readonly savedTrigger = viewChild(MatAutocompleteTrigger);
+  /** The saved recipient whose number is in the field, if any. */
+  protected readonly matchedSaved = computed(() => findRecipientByNumber(this.saved(), this.value().toAccountNumber));
+  /** Autocomplete options: all when the field is empty or already holds a saved number, else filtered by the text. */
+  protected readonly savedOptions = computed(() =>
+    this.matchedSaved() ? this.saved() : filterRecipients(this.saved(), this.value().toAccountNumber),
+  );
 
   /** One key per transfer intent; see openReview(). */
   private readonly idempotency = new IdempotencyKeyHolder();
@@ -153,6 +186,24 @@ export class NewTransferPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadAccounts(true);
+    this.loadSaved();
+  }
+
+  /** Saved recipients for the autocomplete. A failure only disables the picker; typing a number still works. */
+  protected loadSaved(): void {
+    this.savedState.set('loading');
+    this.recipientsApi.list({ silent: true }).subscribe({
+      next: (items) => {
+        this.saved.set(items);
+        this.savedState.set('ready');
+      },
+      error: () => this.savedState.set('error'),
+    });
+  }
+
+  protected openSavedPicker(event: Event): void {
+    event.stopPropagation();
+    this.savedTrigger()?.openPanel();
   }
 
   protected loadAccounts(initial = false): void {
@@ -161,7 +212,10 @@ export class NewTransferPageComponent implements OnInit {
       next: (accounts) => {
         this.accounts.set(accounts);
         this.loadState.set('ready');
-        if (initial) this.preselectSource();
+        if (initial) {
+          this.preselectSource();
+          this.prefillRecipient();
+        }
         this.form.updateValueAndValidity();
       },
       error: (err: unknown) => {
@@ -183,6 +237,20 @@ export class NewTransferPageComponent implements OnInit {
     if (wanted && !active.some((a) => a.accountNumber === wanted)) {
       this.toast.info(`Account ${wanted} can't send money (not active or not yours). Choose another account.`);
     }
+  }
+
+  /** `?to=` → account-number mode with the number filled in; anything that is not an FC number is ignored. */
+  private prefillRecipient(): void {
+    const raw = this.to();
+    if (raw === undefined || raw === null || raw === '') return;
+    const accountNumber = parseToParam(raw);
+    if (!accountNumber) {
+      this.toast.info("The recipient in the link isn't a valid account number. Enter it manually.");
+      return;
+    }
+    this.setMode('account');
+    this.form.controls.toAccountNumber.setValue(accountNumber);
+    this.form.controls.toAccountNumber.markAsTouched(); // show same-account / format issues right away
   }
 
   protected setMode(mode: TransferMode): void {
@@ -284,6 +352,36 @@ export class NewTransferPageComponent implements OnInit {
         this.loadAccounts(); // balances changed
         window.scrollTo({ top: 0 });
       });
+  }
+
+  /**
+   * Result screen: offer "Save this recipient" after a transfer by account number when the number is not saved
+   * yet and is not one of my own accounts. Hidden while the saved list is unknown (loading or failed).
+   */
+  protected readonly resultSavedRecipient = computed(() => {
+    const r = this.result();
+    return r?.draft.mode === 'account' ? findRecipientByNumber(this.saved(), r.draft.toLabel) : undefined;
+  });
+  protected readonly canSaveResultRecipient = computed(() => {
+    const r = this.result();
+    if (!r || r.draft.mode !== 'account' || this.savedState() !== 'ready') return false;
+    if (this.accounts().some((a) => a.accountNumber === r.draft.toLabel)) return false;
+    return !this.resultSavedRecipient();
+  });
+
+  protected saveResultRecipient(): void {
+    const r = this.result();
+    if (!r || !this.canSaveResultRecipient()) return;
+    openAddRecipientDialog(this.dialog, {
+      existing: this.saved(),
+      accountNumber: r.draft.toLabel,
+      lockAccountNumber: true,
+    }).subscribe((created) => {
+      if (!created) return;
+      this.saved.update((list) => [...list, created]); // hides the action right away
+      this.toast.success(`"${created.name}" added to saved recipients.`);
+      this.loadSaved(); // full list with owner details, server order
+    });
   }
 
   protected newTransfer(): void {

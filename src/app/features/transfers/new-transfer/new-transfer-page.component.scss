@@ -172,3 +172,49 @@
   gap: 8px;
   margin-top: 20px;
 }
+
+// ---- Saved recipients ----
+// Option content is created by this template, so these emulated styles also reach the overlay panel.
+.saved-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.saved-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.inline-button {
+  height: 28px;
+  padding: 0 8px;
+}
+
+.save-recipient {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 16px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface-variant);
+
+  span {
+    flex: 1 1 180px;
+  }
+}

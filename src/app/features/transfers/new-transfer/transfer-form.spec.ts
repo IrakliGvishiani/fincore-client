@@ -7,9 +7,10 @@ import {
   buildDraft,
   createTransferForm,
   draftFingerprint,
-  normalizeAccountNumber,
+  parseToParam,
   transferRulesValidator,
 } from './transfer-form';
+import { normalizeAccountNumber } from '../../../shared/forms/validators';
 
 const account = (id: number, accountNumber: string, currency: AccountDto['currency'], balance = 100): AccountDto => ({
   id,
@@ -169,5 +170,37 @@ describe('transferErrorMessage', () => {
     expect(
       transferErrorMessage(err(409, 'Idempotency key already used for a different transfer.')).checkHistory,
     ).toBeTrue();
+  });
+});
+
+describe('?to= prefill (parseToParam)', () => {
+  it('accepts and normalizes an FC account number', () => {
+    expect(parseToParam('fc 2222 2222 2222 2222')).toBe('FC2222222222222222');
+    expect(parseToParam(' FC2222222222222222 ')).toBe('FC2222222222222222');
+  });
+
+  it('rejects anything else', () => {
+    expect(parseToParam(undefined)).toBeNull();
+    expect(parseToParam('')).toBeNull();
+    expect(parseToParam('FC123')).toBeNull();
+    expect(parseToParam('GE29NB0000000101904917')).toBeNull();
+    expect(parseToParam('<script>alert(1)</script>')).toBeNull();
+    expect(parseToParam(['FC2222222222222222'])).toBeNull(); // repeated ?to=a&to=b
+    expect(parseToParam('FC2222222222222222'.padEnd(80, ' '))).toBeNull(); // too long
+  });
+});
+
+describe('saved recipient in the transfer form', () => {
+  it('choosing a saved recipient counts as a field change for the idempotency key', () => {
+    const form = makeForm();
+    const holder = new IdempotencyKeyHolder();
+    form.patchValue({ fromAccountNumber: GEL1.accountNumber, toAccountNumber: GEL2.accountNumber, amount: '10' });
+    const first = holder.keyFor(draftFingerprint(buildDraft(form, MY_ACCOUNTS, RECIPIENTS)!));
+
+    // What mat-autocomplete does when an option is picked: set the control to the saved number.
+    form.controls.toAccountNumber.setValue('FC4444444444444444');
+    const draft = buildDraft(form, MY_ACCOUNTS, RECIPIENTS)!;
+    expect(draft.request).toEqual(jasmine.objectContaining({ toAccountNumber: 'FC4444444444444444' }));
+    expect(holder.keyFor(draftFingerprint(draft))).not.toBe(first);
   });
 });

@@ -29,6 +29,10 @@ export const SERVER_MESSAGES = {
   /** POST transfers/recipients/lookup limit (1/s, 20 per 10 min) — returned as 400, not 429. */
   tooManyLookups: 'Too many lookups',
   transferIdempotencyConflict: 'Idempotency key already used for a different transfer',
+  /** POST /api/recipient duplicate (400). A parallel duplicate hits the unique index instead → 409, no message. */
+  recipientAlreadySaved: 'This Recipient is already saved',
+  /** SavedRecipient.Create / UpdateName with a blank name (ArgumentException → 500 with this message). */
+  recipientNameRequired: 'Recipient name is required',
 } as const;
 
 export type ServerMessageKey = keyof typeof SERVER_MESSAGES;
@@ -142,6 +146,24 @@ export function transferErrorMessage(e: HasServerMessage): { message: string; ch
     return { message: `${base} ${TRANSFER_MESSAGES.mayHaveGoneThrough}`, checkHistory: true };
   }
   return { message: e.message, checkHistory: false };
+}
+
+export const RECIPIENT_MESSAGES = {
+  alreadySaved: 'This account number is already in your saved recipients.',
+} as const;
+
+/**
+ * Saved-recipient create/rename errors that belong to a form field. Duplicates (400 message, or a 409 from the
+ * unique index when two saves race) → accountNumber; blank name → name. Anything else stays a form-level error.
+ */
+export function recipientFieldError(e: HasServerMessage): { field: 'name' | 'accountNumber'; message: string } | null {
+  if (matchesServerMessage(e.serverMessage, 'recipientAlreadySaved') || e.status === 409) {
+    return { field: 'accountNumber', message: RECIPIENT_MESSAGES.alreadySaved };
+  }
+  if (matchesServerMessage(e.serverMessage, 'recipientNameRequired')) {
+    return { field: 'name', message: 'Name is required.' };
+  }
+  return null;
 }
 
 /**

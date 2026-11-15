@@ -111,7 +111,12 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/transfers/transfer-detail-page.component').then((m) => m.TransferDetailPageComponent),
           },
-          { path: 'recipients', ...placeholder('Saved recipients', 6) },
+          {
+            path: 'recipients',
+            title: 'Saved recipients',
+            loadComponent: () =>
+              import('./features/recipients/recipients-page.component').then((m) => m.RecipientsPageComponent),
+          },
           { path: 'conversions', ...placeholder('Currency conversion', 7) },
           { path: 'cards', ...placeholder('Virtual cards', 8) },
           { path: 'analytics', ...placeholder('Analytics', 9) },

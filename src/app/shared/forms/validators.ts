@@ -110,3 +110,24 @@ export function parseAmount(value: unknown): number {
 export function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
+
+/** FinCore account numbers: "FC" + 16 digits (backend AccountNumberGenerator). */
+export const ACCOUNT_NUMBER_PATTERN = /^FC\d{16}$/;
+
+/** Trim, remove spaces, upper-case: "fc 1234 5678…" → "FC12345678…". */
+export function normalizeAccountNumber(value: unknown): string {
+  return String(value ?? '')
+    .replace(/\s+/g, '')
+    .toUpperCase();
+}
+
+/** True if the value is a FinCore account number after normalization. */
+export function isAccountNumber(value: unknown): boolean {
+  return ACCOUNT_NUMBER_PATTERN.test(normalizeAccountNumber(value));
+}
+
+/** `{ pattern: true }` unless empty or a valid account number (spaces and case ignored). Pair with `required`. */
+export const accountNumberValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const value = normalizeAccountNumber(control.value);
+  return value && !ACCOUNT_NUMBER_PATTERN.test(value) ? { pattern: true } : null;
+};
