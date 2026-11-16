@@ -80,6 +80,19 @@
                 </a>
               }
             </span>
+            <span [matTooltip]="rules().convert ?? ''">
+              @if (rules().convert) {
+                <button mat-stroked-button type="button" disabled>
+                  <mat-icon>currency_exchange</mat-icon>
+                  Convert
+                </button>
+              } @else {
+                <a mat-stroked-button routerLink="/conversions/new" [queryParams]="{ from: a.accountNumber }">
+                  <mat-icon>currency_exchange</mat-icon>
+                  Convert
+                </a>
+              }
+            </span>
             <span [matTooltip]="rules().rename ?? ''">
               <button mat-stroked-button type="button" [disabled]="!!rules().rename" (click)="rename()">
                 <mat-icon>edit</mat-icon>

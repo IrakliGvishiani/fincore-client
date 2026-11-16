@@ -58,7 +58,7 @@
                 @if (resultSavedRecipient(); as s) {
                   {{ s.name }}
                 }
-                <span class="mono" [class.sub]="!!resultSavedRecipient()">{{ r.draft.toLabel }}</span>
+                <span class="mono" [class.sub]="!!resultSavedRecipient()">{{ r.draft.toLabel | accountNumber }}</span>
               </dd>
             </div>
             <div>
@@ -271,7 +271,7 @@
                     @for (r of recipients(); track r.accountId) {
                       @let reason = recipientDisabledReason(r);
                       <mat-radio-button [value]="r.accountId" [disabled]="!!reason">
-                        <span class="mono">{{ r.maskedAccountNumber }}</span>
+                        <span class="mono">{{ r.maskedAccountNumber | accountNumber }}</span>
                         <span class="currency-chip">{{ r.currency }}</span>
                         @if (reason) {
                           <span class="opt-sub">{{ reason }}</span>

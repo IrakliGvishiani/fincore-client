@@ -1,0 +1,80 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.range-field {
+  flex: 1 1 260px;
+  max-width: 320px;
+}
+
+.currency-field {
+  flex: 0 1 150px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .range-field,
+  .currency-field {
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+.conversions-table {
+  width: 100%;
+  min-width: 820px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.small {
+  font: var(--mat-sys-body-small);
+}
+
+.num {
+  text-align: right;
+}
+
+.amount {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+
+  &.in {
+    color: #1b7a32;
+  }
+
+  &.out {
+    color: var(--mat-sys-error);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

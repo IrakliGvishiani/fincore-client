@@ -29,6 +29,7 @@ export const SERVER_MESSAGES = {
   /** POST transfers/recipients/lookup limit (1/s, 20 per 10 min) — returned as 400, not 429. */
   tooManyLookups: 'Too many lookups',
   transferIdempotencyConflict: 'Idempotency key already used for a different transfer',
+  conversionIdempotencyConflict: 'Idempotency key already used for a different conversion',
   /** POST /api/recipient duplicate (400). A parallel duplicate hits the unique index instead → 409, no message. */
   recipientAlreadySaved: 'This Recipient is already saved',
   /** SavedRecipient.Create / UpdateName with a blank name (ArgumentException → 500 with this message). */
@@ -146,6 +147,44 @@ export function transferErrorMessage(e: HasServerMessage): { message: string; ch
     return { message: `${base} ${TRANSFER_MESSAGES.mayHaveGoneThrough}`, checkHistory: true };
   }
   return { message: e.message, checkHistory: false };
+}
+
+export const CONVERSION_MESSAGES = {
+  ratesUnavailable: 'Exchange rates are temporarily unavailable. Please try again later.',
+  mayHaveGoneThrough:
+    'The conversion may already have gone through. Check your conversion history before trying again.',
+  idempotencyConflict:
+    'This request ID was already used for a different conversion. Check your conversion history, then start a new conversion.',
+} as const;
+
+export interface ConversionErrorInfo {
+  message: string;
+  /** 409 "The exchange rate has changed…": get a new quote and ask the user to confirm again. */
+  rateChanged: boolean;
+  /** The conversion might have happened (409 without a clear meaning, network error, unclear 5xx). */
+  checkHistory: boolean;
+}
+
+/**
+ * Text for a failed quote or conversion. 503 (NBG down) → ratesUnavailable. Server messages are shown as-is
+ * (domain errors such as "Insufficient funds." come back as 500 with the message).
+ */
+export function conversionErrorMessage(e: HasServerMessage): ConversionErrorInfo {
+  if (isExchangeRateChanged(e)) {
+    return { message: e.message, rateChanged: true, checkHistory: false };
+  }
+  if (e.status === 503) {
+    return { message: CONVERSION_MESSAGES.ratesUnavailable, rateChanged: false, checkHistory: false };
+  }
+  if (matchesServerMessage(e.serverMessage, 'conversionIdempotencyConflict')) {
+    return { message: CONVERSION_MESSAGES.idempotencyConflict, rateChanged: false, checkHistory: true };
+  }
+  const unclear = !e.serverMessage || isTechnicalMessage(e.serverMessage);
+  if (e.status === 409 || e.status === 0 || (e.status >= 500 && unclear)) {
+    const base = e.status === 409 && unclear ? 'The conversion could not be confirmed.' : e.message;
+    return { message: `${base} ${CONVERSION_MESSAGES.mayHaveGoneThrough}`, rateChanged: false, checkHistory: true };
+  }
+  return { message: e.message, rateChanged: false, checkHistory: false };
 }
 
 export const RECIPIENT_MESSAGES = {

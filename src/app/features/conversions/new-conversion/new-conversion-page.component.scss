@@ -1,0 +1,140 @@
+:host {
+  display: block;
+  max-width: 640px;
+}
+
+.back {
+  margin: -8px 0 8px -12px;
+}
+
+.form-card mat-card-content,
+.result mat-card-content {
+  padding-top: 16px;
+}
+
+.conversion-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.account-option {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.opt-name {
+  font: var(--mat-sys-body-large);
+}
+
+.opt-sub,
+.sub {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.opt-balance {
+  margin-left: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.quote {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container-low);
+
+  &.stale app-conversion-breakdown {
+    opacity: 0.6;
+  }
+}
+
+.quote-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+  }
+}
+
+.submit-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+// ---- Result ----
+.result-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.result-icon {
+  width: 36px;
+  height: 36px;
+  font-size: 36px;
+  color: #2e7d32;
+}
+
+.result-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font: var(--mat-sys-headline-small);
+  font-variant-numeric: tabular-nums;
+
+  mat-icon {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 24px;
+  margin: 0 0 16px;
+
+  dt {
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    display: flex;
+    flex-direction: column;
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+app-form-alert {
+  display: block;
+}
+
+.result app-form-alert {
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}

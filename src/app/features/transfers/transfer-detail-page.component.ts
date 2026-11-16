@@ -9,6 +9,7 @@ import { TransferDto } from '../../core/models';
 import { ToastService } from '../../core/notify/toast.service';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { UtcDatePipe } from '../../shared/pipes/utc-date.pipe';
+import { AccountNumberPipe, isMaskedAccountNumber } from '../../shared/pipes/account-number.pipe';
 import { CopyButtonComponent } from '../../shared/ui/copy-button.component';
 import { FormAlertComponent } from '../../shared/ui/form-alert.component';
 import { StatePanelComponent } from '../../shared/ui/state-panel.component';
@@ -28,6 +29,7 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'error';
     MoneyPipe,
     UtcDatePipe,
     CopyButtonComponent,
+    AccountNumberPipe,
     FormAlertComponent,
     StatePanelComponent,
     StatusBadgeComponent,
@@ -43,6 +45,7 @@ export class TransferDetailPageComponent implements OnInit {
   /** Route param (the route only matches digits). */
   readonly id = input.required({ transform: numberAttribute });
 
+  protected readonly isMasked = isMaskedAccountNumber;
   protected readonly state = signal<LoadState>('loading');
   protected readonly error = signal<string | null>(null);
   protected readonly transfer = signal<TransferDto | null>(null);

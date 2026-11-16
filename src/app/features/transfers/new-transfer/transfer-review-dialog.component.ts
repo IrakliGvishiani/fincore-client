@@ -8,6 +8,7 @@ import { Observable, finalize } from 'rxjs';
 import { ApiError } from '../../../core/api/api-error';
 import { transferErrorMessage } from '../../../core/api/error-messages';
 import { TransferDto } from '../../../core/models';
+import { AccountNumberPipe } from '../../../shared/pipes/account-number.pipe';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { FormAlertComponent } from '../../../shared/ui/form-alert.component';
 import { TransferDraft } from './transfer-form';
@@ -24,7 +25,7 @@ export interface TransferReviewData {
  */
 @Component({
   selector: 'app-transfer-review-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, MoneyPipe, FormAlertComponent],
+  imports: [AccountNumberPipe, MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, MoneyPipe, FormAlertComponent],
   template: `
     <h2 mat-dialog-title>Review transfer</h2>
     <mat-dialog-content>
@@ -41,7 +42,7 @@ export interface TransferReviewData {
         <div>
           <dt>To</dt>
           <dd>
-            <span class="mono">{{ draft.toLabel }}</span>
+            <span class="mono">{{ draft.toLabel | accountNumber }}</span>
             <span class="sub">{{ draft.mode === 'recipient' ? 'Recipient found by personal number' : 'Account number' }}</span>
           </dd>
         </div>

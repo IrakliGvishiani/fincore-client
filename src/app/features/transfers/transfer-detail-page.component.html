@@ -42,15 +42,20 @@
             <div>
               <dt>From account</dt>
               <dd>
-                <span class="mono">{{ t.fromAccountNumber }}</span>
-                <app-copy-button [value]="t.fromAccountNumber" label="account number" />
+                <span class="mono">{{ t.fromAccountNumber | accountNumber }}</span>
+                @if (!isMasked(t.fromAccountNumber)) {
+                  <app-copy-button [value]="t.fromAccountNumber" label="account number" />
+                }
               </dd>
             </div>
             <div>
               <dt>To account</dt>
               <dd>
-                <span class="mono">{{ t.toAccountNumber }}</span>
-                <app-copy-button [value]="t.toAccountNumber" label="account number" />
+                <!-- The backend always masks the destination (even when it is one of my accounts). -->
+                <span class="mono">{{ t.toAccountNumber | accountNumber }}</span>
+                @if (!isMasked(t.toAccountNumber)) {
+                  <app-copy-button [value]="t.toAccountNumber" label="account number" />
+                }
               </dd>
             </div>
             <div>

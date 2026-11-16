@@ -30,6 +30,7 @@ import { createCooldown } from '../../../core/util/cooldown';
 import { IdempotencyKeyHolder } from '../../../core/util/idempotency';
 import { fieldError } from '../../../shared/forms/field-error';
 import { parseAmount, trimmed } from '../../../shared/forms/validators';
+import { AccountNumberPipe } from '../../../shared/pipes/account-number.pipe';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { FormAlertComponent } from '../../../shared/ui/form-alert.component';
 import { StatePanelComponent } from '../../../shared/ui/state-panel.component';
@@ -87,6 +88,7 @@ interface TransferResult {
     FormAlertComponent,
     StatePanelComponent,
     StatusBadgeComponent,
+    AccountNumberPipe,
     AvatarComponent,
   ],
   templateUrl: './new-transfer-page.component.html',

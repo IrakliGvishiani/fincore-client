@@ -8,6 +8,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ApiError } from '../../core/api/api-error';
 import { MyTransferDto } from '../../core/models';
+import { AccountNumberPipe } from '../../shared/pipes/account-number.pipe';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { UtcDatePipe } from '../../shared/pipes/utc-date.pipe';
 import { StatePanelComponent } from '../../shared/ui/state-panel.component';
@@ -20,6 +21,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-transfers-list-page',
   imports: [
+    AccountNumberPipe,
     RouterLink,
     MatButtonModule,
     MatIconModule,

@@ -1,0 +1,232 @@
+<a mat-button routerLink="/conversions" class="back">
+  <mat-icon>arrow_back</mat-icon>
+  Conversion history
+</a>
+
+<h1 class="page-title">{{ result() ? 'Conversion completed' : 'Convert currency' }}</h1>
+
+@switch (loadState()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading your accounts…" />
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load your accounts" [message]="loadError()">
+      <button mat-flat-button type="button" (click)="loadAccounts(true)">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (result(); as r) {
+      <!-- ===== Result ===== -->
+      <mat-card appearance="outlined" class="result">
+        <mat-card-content>
+          <div class="result-head">
+            <mat-icon class="result-icon">check_circle</mat-icon>
+            <div>
+              <div class="result-amounts">
+                {{ r.conversion.fromAmount | money: r.conversion.fromCurrency }}
+                <mat-icon>arrow_forward</mat-icon>
+                {{ r.conversion.toAmount | money: r.conversion.toCurrency }}
+              </div>
+              <div class="sub">{{ r.conversion.createdAt | utcDate: 'medium' }} · Reference #{{ r.conversion.id }}</div>
+            </div>
+          </div>
+
+          @if (r.conversion.rate !== r.confirmedRate) {
+            <app-form-alert kind="info">
+              This request had already been completed earlier, so the original conversion is shown (its rate differs
+              from the one you just confirmed). No money was converted twice.
+            </app-form-alert>
+          }
+
+          <dl class="facts">
+            <div>
+              <dt>From</dt>
+              <dd>{{ r.from.name }} <span class="mono sub">{{ r.conversion.fromAccountNumber }}</span></dd>
+            </div>
+            <div>
+              <dt>To</dt>
+              <dd>{{ r.to.name }} <span class="mono sub">{{ r.conversion.toAccountNumber }}</span></dd>
+            </div>
+          </dl>
+
+          <app-conversion-breakdown [quote]="r.conversion" />
+
+          <div class="actions">
+            <a mat-flat-button routerLink="/conversions">
+              <mat-icon>history</mat-icon>
+              View in history
+            </a>
+            <button mat-stroked-button type="button" [disabled]="downloading()" (click)="downloadReceipt(r.conversion.id)">
+              <mat-icon>download</mat-icon>
+              {{ downloading() ? 'Downloading…' : 'Download receipt' }}
+            </button>
+            <button mat-button type="button" (click)="newConversion()">
+              <mat-icon>currency_exchange</mat-icon>
+              New conversion
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    } @else if (!canConvert()) {
+      <mat-card appearance="outlined">
+        <app-state-panel
+          kind="empty"
+          icon="currency_exchange"
+          title="You need accounts in two currencies"
+          message="Conversions move money between your own active accounts in different currencies (for example GEL → USD). Open an account in another currency first."
+        >
+          <a mat-flat-button routerLink="/accounts">Open an account</a>
+        </app-state-panel>
+      </mat-card>
+    } @else {
+      <!-- ===== Form ===== -->
+      <mat-card appearance="outlined" class="form-card">
+        <mat-card-content>
+          <form class="conversion-form" [formGroup]="form" (ngSubmit)="primaryAction()" novalidate>
+            <mat-form-field>
+              <mat-label>From account</mat-label>
+              <mat-select formControlName="fromAccountNumber">
+                <mat-select-trigger>
+                  @if (fromAccount(); as a) {
+                    {{ a.name }} · {{ a.balance | money: a.currency }}
+                  }
+                </mat-select-trigger>
+                @for (a of active(); track a.accountNumber) {
+                  <mat-option [value]="a.accountNumber">
+                    <div class="account-option">
+                      <span class="opt-name">{{ a.name }} · {{ a.currency }}</span>
+                      <span class="opt-sub mono">{{ a.accountNumber }}</span>
+                    </div>
+                    <span class="opt-balance">{{ a.balance | money: a.currency }}</span>
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>Only active accounts are listed.</mat-hint>
+              <mat-error>{{ fieldError(form.controls.fromAccountNumber, 'Source account', { required: 'Choose an account to convert from.' }) }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>To account</mat-label>
+              <mat-select formControlName="toAccountNumber">
+                <mat-select-trigger>
+                  @if (toAccount(); as a) {
+                    {{ a.name }} · {{ a.currency }}
+                  }
+                </mat-select-trigger>
+                @for (a of active(); track a.accountNumber) {
+                  @let reason = targetReason(a);
+                  <mat-option [value]="a.accountNumber" [disabled]="!!reason">
+                    <div class="account-option">
+                      <span class="opt-name">{{ a.name }} · {{ a.currency }}</span>
+                      <span class="opt-sub">
+                        @if (reason) {
+                          {{ reason }}
+                        } @else {
+                          <span class="mono">{{ a.accountNumber }}</span>
+                        }
+                      </span>
+                    </div>
+                    <span class="opt-balance">{{ a.balance | money: a.currency }}</span>
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>Must be in a different currency.</mat-hint>
+              <mat-error>{{ fieldError(form.controls.toAccountNumber, 'Target account', { required: 'Choose an account to receive the money.' }) }}</mat-error>
+            </mat-form-field>
+
+            @if (form.hasError('sameCurrency') || form.hasError('sameAccount')) {
+              <app-form-alert kind="error">Choose two different accounts in different currencies.</app-form-alert>
+            }
+
+            <mat-form-field>
+              <mat-label>Amount to convert</mat-label>
+              <input matInput formControlName="amount" inputmode="decimal" autocomplete="off" />
+              @if (fromAccount(); as a) {
+                <span matTextSuffix>&nbsp;{{ a.currency }}</span>
+              }
+              <mat-hint>
+                @if (fromAccount(); as a) {
+                  Available {{ a.balance | money: a.currency }} ·
+                }
+                In the source currency · fee is taken from this amount
+              </mat-hint>
+              <mat-error>{{ fieldError(form.controls.amount, 'Amount') }}</mat-error>
+            </mat-form-field>
+
+            @if (overBalance()) {
+              <app-form-alert kind="info">
+                The amount is more than the available balance. You can still get a quote, but the bank will likely
+                decline the conversion.
+              </app-form-alert>
+            }
+
+            @if (quoteError(); as message) {
+              <app-form-alert kind="error">{{ message }}</app-form-alert>
+            }
+
+            <!-- Quote -->
+            @if (quoteState(); as q) {
+              <section class="quote" [class.stale]="quoteStale()" aria-live="polite">
+                <div class="quote-head">
+                  <h2>Quote</h2>
+                  <span class="sub">
+                    @if (quoteAgeMinutes() < 1) {
+                      Just now
+                    } @else {
+                      {{ quoteAgeMinutes() }} min ago
+                    }
+                  </span>
+                </div>
+
+                @if (rateNotice(); as n) {
+                  <app-form-alert kind="info">
+                    The exchange rate changed before your conversion went through ({{ n.previous }} → {{ n.current }}).
+                    Nothing was converted. Check the new amounts below and confirm again.
+                  </app-form-alert>
+                }
+
+                <app-conversion-breakdown [quote]="q.quote" />
+
+                @if (quoteStale()) {
+                  <app-form-alert kind="info">
+                    This quote is more than {{ quoteMaxAgeMinutes }} minutes old. Refresh it to see the current rate
+                    before converting.
+                  </app-form-alert>
+                }
+              </section>
+            }
+
+            <div class="submit-row">
+              @if (quoteState() && !quoteStale()) {
+                <button mat-button type="button" [disabled]="quoting()" (click)="getQuote()">
+                  <mat-icon>refresh</mat-icon>
+                  Refresh quote
+                </button>
+              }
+              @if (quoting()) {
+                <button mat-flat-button type="button" disabled>
+                  <mat-spinner class="button-spinner" diameter="18" />
+                  Getting quote…
+                </button>
+              } @else if (!quoteState()) {
+                <button mat-flat-button type="submit">Get quote</button>
+              } @else if (quoteStale()) {
+                <button mat-flat-button type="submit">
+                  <mat-icon>refresh</mat-icon>
+                  Refresh quote
+                </button>
+              } @else {
+                <button mat-flat-button type="submit">
+                  Convert
+                  <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+                </button>
+              }
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+}

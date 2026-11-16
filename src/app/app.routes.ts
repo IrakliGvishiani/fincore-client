@@ -117,7 +117,22 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/recipients/recipients-page.component').then((m) => m.RecipientsPageComponent),
           },
-          { path: 'conversions', ...placeholder('Currency conversion', 7) },
+          {
+            path: 'conversions',
+            title: 'Conversions',
+            loadComponent: () =>
+              import('./features/conversions/conversions-list-page.component').then(
+                (m) => m.ConversionsListPageComponent,
+              ),
+          },
+          {
+            path: 'conversions/new',
+            title: 'Convert currency',
+            loadComponent: () =>
+              import('./features/conversions/new-conversion/new-conversion-page.component').then(
+                (m) => m.NewConversionPageComponent,
+              ),
+          },
           { path: 'cards', ...placeholder('Virtual cards', 8) },
           { path: 'analytics', ...placeholder('Analytics', 9) },
         ],
