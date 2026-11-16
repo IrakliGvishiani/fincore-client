@@ -1,0 +1,119 @@
+<a mat-button routerLink="/cards" class="back">
+  <mat-icon>arrow_back</mat-icon>
+  All cards
+</a>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading card…" />
+  }
+
+  @case ('not-found') {
+    <app-state-panel kind="empty" icon="credit_card_off" title="Card not found" message="This card doesn't exist or isn't yours.">
+      <a mat-flat-button routerLink="/cards">Back to cards</a>
+    </app-state-panel>
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load the card" [message]="error()">
+      <button mat-flat-button type="button" (click)="load()">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (card(); as c) {
+      <h1 class="page-title">{{ c.name }}</h1>
+
+      <mat-card appearance="outlined" class="summary">
+        <mat-card-content>
+          <div class="summary-grid">
+            <app-card-visual [card]="c" />
+
+            <div class="details">
+              <dl class="facts">
+                <div>
+                  <dt>Linked account</dt>
+                  <dd>
+                    @if (account(); as a) {
+                      <a [routerLink]="['/accounts', a.accountNumber]">{{ a.name }}</a>
+                      <span class="mono sub">{{ accountTail() }} · {{ a.currency }} · {{ a.status }}</span>
+                    } @else {
+                      <span class="sub">Account #{{ c.bankAccountId }}</span>
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt>Daily limit</dt>
+                  <dd>{{ account() ? (c.dailyLimit | money: account()!.currency) : c.dailyLimit }}</dd>
+                </div>
+                <div>
+                  <dt>Limit per payment</dt>
+                  <dd>{{ account() ? (c.transactionLimit | money: account()!.currency) : c.transactionLimit }}</dd>
+                </div>
+                <div>
+                  <dt>Created</dt>
+                  <dd>{{ c.createdAt | utcDate: 'mediumDate' }}</dd>
+                </div>
+              </dl>
+
+              @if (status() === 'Expired' && c.status !== 'Expired') {
+                <p class="status-note">
+                  <mat-icon>event_busy</mat-icon>
+                  This card is past its expiry date, so payments are declined.
+                </p>
+              } @else if (c.status === 'Frozen') {
+                <p class="status-note">
+                  <mat-icon>ac_unit</mat-icon>
+                  This card is frozen. Payments are declined until you unfreeze it.
+                </p>
+              } @else if (c.status === 'Closed') {
+                <p class="status-note">
+                  <mat-icon>lock</mat-icon>
+                  This card is closed. Its payment history stays available below.
+                </p>
+              }
+
+              <div class="actions">
+                @if (actions().freeze) {
+                  <button mat-stroked-button type="button" [disabled]="!!busy()" (click)="freeze()">
+                    <mat-icon>ac_unit</mat-icon>
+                    {{ busy() === 'freeze' ? 'Freezing…' : 'Freeze' }}
+                  </button>
+                }
+                @if (actions().unfreeze) {
+                  <button mat-stroked-button type="button" [disabled]="!!busy()" (click)="unfreeze()">
+                    <mat-icon>wb_sunny</mat-icon>
+                    {{ busy() === 'unfreeze' ? 'Unfreezing…' : 'Unfreeze' }}
+                  </button>
+                }
+                <span [matTooltip]="actions().editLimits ? '' : 'Closed cards cannot be changed.'">
+                  <button mat-stroked-button type="button" [disabled]="!actions().editLimits || !!busy()" (click)="editLimits()">
+                    <mat-icon>tune</mat-icon>
+                    Edit limits
+                  </button>
+                </span>
+                <span [matTooltip]="actions().close ? '' : 'This card is already closed.'">
+                  <button mat-stroked-button type="button" class="danger" [disabled]="!actions().close || !!busy()" (click)="close()">
+                    <mat-icon>block</mat-icon>
+                    {{ busy() === 'close' ? 'Closing…' : 'Close card' }}
+                  </button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <section class="payments">
+        <div class="section-header">
+          <h2>Payments</h2>
+          <button mat-flat-button type="button" (click)="simulatePayment()">
+            <mat-icon>shopping_bag</mat-icon>
+            Simulate payment
+          </button>
+        </div>
+        <app-payment-history [cardId]="c.id" [compact]="true" />
+      </section>
+    }
+  }
+}

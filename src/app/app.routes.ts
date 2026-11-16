@@ -133,7 +133,27 @@ export const routes: Routes = [
                 (m) => m.NewConversionPageComponent,
               ),
           },
-          { path: 'cards', ...placeholder('Virtual cards', 8) },
+          {
+            path: 'cards',
+            title: 'Cards',
+            loadComponent: () => import('./features/cards/cards-page.component').then((m) => m.CardsPageComponent),
+          },
+          {
+            // Digits only, so unknown paths fall through to the not-found page.
+            matcher: (segments) =>
+              segments.length === 2 && segments[0].path === 'cards' && /^\d+$/.test(segments[1].path)
+                ? { consumed: segments, posParams: { id: segments[1] } }
+                : null,
+            title: 'Card',
+            loadComponent: () =>
+              import('./features/cards/card-detail-page.component').then((m) => m.CardDetailPageComponent),
+          },
+          {
+            path: 'payments',
+            title: 'Payments',
+            loadComponent: () =>
+              import('./features/payments/payments-page.component').then((m) => m.PaymentsPageComponent),
+          },
           { path: 'analytics', ...placeholder('Analytics', 9) },
         ],
       },

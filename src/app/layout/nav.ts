@@ -27,6 +27,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { label: 'Recipients', icon: 'contacts', route: '/recipients' },
       { label: 'Conversions', icon: 'currency_exchange', route: '/conversions' },
       { label: 'Cards', icon: 'credit_card', route: '/cards' },
+      { label: 'Payments', icon: 'receipt_long', route: '/payments' },
       { label: 'Analytics', icon: 'insights', route: '/analytics' },
     ],
   },
