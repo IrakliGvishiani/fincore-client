@@ -55,6 +55,14 @@ export const routes: Routes = [
     ],
   },
 
+  // Demo Shop (step 9): Customer only, its own layout (no FinCore shell). Signed out → /login?returnUrl=.
+  {
+    path: 'demo-shop',
+    canActivate: [authGuard, roleGuard('Customer')],
+    canActivateChild: [authGuard],
+    loadChildren: () => import('./features/demo-shop/demo-shop.routes').then((m) => m.DEMO_SHOP_ROUTES),
+  },
+
   // Signed-in area.
   {
     path: '',

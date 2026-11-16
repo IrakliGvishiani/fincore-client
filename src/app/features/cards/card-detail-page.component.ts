@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, numberAttribute, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
@@ -19,12 +19,11 @@ import { StatePanelComponent } from '../../shared/ui/state-panel.component';
 import { AccountsApi } from '../accounts/accounts.api';
 import { PaymentHistoryComponent } from '../payments/payment-history.component';
 import { EditLimitsDialogComponent, EditLimitsDialogData } from './dialogs/edit-limits-dialog.component';
-import { openSimulatePaymentDialog } from './dialogs/simulate-payment-dialog.component';
 
 type LoadState = 'loading' | 'ready' | 'not-found' | 'error';
 type StatusAction = 'freeze' | 'unfreeze' | 'close';
 
-/** /cards/:id — card, linked account, limits, status actions, simulated payment, the card's payments. */
+/** /cards/:id — card, linked account, limits, status actions, the card's payments (made in the Demo Shop). */
 @Component({
   selector: 'app-card-detail-page',
   imports: [
@@ -51,8 +50,6 @@ export class CardDetailPageComponent implements OnInit {
 
   /** Route param (digits only, see app.routes.ts). */
   readonly id = input.required({ transform: numberAttribute });
-
-  private readonly history = viewChild(PaymentHistoryComponent);
 
   protected readonly state = signal<LoadState>('loading');
   protected readonly error = signal<string | null>(null);
@@ -178,15 +175,5 @@ export class CardDetailPageComponent implements OnInit {
           this.load();
         },
       });
-  }
-
-  protected simulatePayment(): void {
-    const card = this.card();
-    if (!card) return;
-    openSimulatePaymentDialog(this.dialog, { card, account: this.account() }).subscribe(() => {
-      // Always refresh: a payment may have been recorded even if the dialog was closed with Escape.
-      this.history()?.reload();
-      this.loadAccount(); // balance changed
-    });
   }
 }

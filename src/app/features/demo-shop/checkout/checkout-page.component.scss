@@ -1,0 +1,140 @@
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: 20px;
+  align-items: start;
+
+  @media (max-width: 880px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.edit-link {
+  font-size: 13px;
+  color: var(--shop-muted);
+}
+
+.total {
+  margin-top: 16px;
+}
+
+// The FinCore part of the page: uses the FinCore (Material) look on purpose, like an embedded payment widget.
+.fincore-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 16px;
+  background: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}
+
+.fincore-pay-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+
+  mat-icon {
+    flex: none;
+    color: var(--mat-sys-primary);
+  }
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+  }
+  p {
+    margin: 2px 0 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.pay-error {
+  margin: 0;
+  color: var(--mat-sys-error);
+}
+
+.pay-hint {
+  margin: -6px 0 0;
+  text-align: center;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// ---- Result ----
+.result {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.result-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--shop-line);
+  font-size: 30px;
+  font-weight: 700;
+
+  &.ok {
+    background: #e6f4ea;
+    color: var(--shop-ok);
+  }
+  &.bad {
+    background: #fdecec;
+    color: var(--shop-bad);
+  }
+}
+
+.reason {
+  margin: 8px 0 4px;
+  font-weight: 600;
+  color: var(--shop-bad);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px 20px;
+  margin: 0 0 24px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--shop-bg);
+  text-align: left;
+
+  dt {
+    font-size: 12px;
+    color: var(--shop-muted);
+  }
+  dd {
+    margin: 2px 0 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .struck {
+    text-decoration: line-through;
+    color: var(--shop-muted);
+  }
+  .ref {
+    font-size: 12px;
+  }
+}
+
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}

@@ -1,0 +1,103 @@
+@if (result(); as p) {
+  <section class="shop-panel result" [attr.data-status]="p.status" aria-live="polite">
+    @if (p.status === 'Completed') {
+      <div class="result-icon ok" aria-hidden="true">✓</div>
+      <h1 class="shop-title">Thank you! Payment approved</h1>
+      <p class="shop-lead">Your order is confirmed. This was a simulated payment.</p>
+    } @else if (p.status === 'Failed') {
+      <div class="result-icon bad" aria-hidden="true">✕</div>
+      <h1 class="shop-title">Payment declined</h1>
+      <p class="reason" role="alert">{{ decline(p.failureReason) }}</p>
+      <p class="shop-lead">Nothing was charged. Your cart is still here.</p>
+    } @else {
+      <div class="result-icon" aria-hidden="true">…</div>
+      <h1 class="shop-title">Payment {{ p.status.toLowerCase() }}</h1>
+      <p class="shop-lead">Check your FinCore payments for the final status.</p>
+    }
+
+    <dl class="facts">
+      <div>
+        <dt>Amount</dt>
+        <dd class="shop-price" [class.struck]="p.status === 'Failed'">{{ p.amount | money: p.currency }}</dd>
+      </div>
+      <div>
+        <dt>Merchant</dt>
+        <dd>{{ p.merchant }}</dd>
+      </div>
+      <div>
+        <dt>Card</dt>
+        <dd class="shop-mono">•••• {{ p.last4Digits }}</dd>
+      </div>
+      <div>
+        <dt>Reference</dt>
+        <dd class="shop-mono ref">{{ p.reference }}</dd>
+      </div>
+    </dl>
+
+    <div class="result-actions">
+      @if (p.status === 'Completed') {
+        <button type="button" class="shop-btn" [disabled]="downloading()" (click)="downloadReceipt()">
+          {{ downloading() ? 'Downloading…' : 'Download receipt' }}
+        </button>
+        <a routerLink="/demo-shop" class="shop-btn shop-btn-primary">Continue shopping</a>
+      } @else if (p.status === 'Failed') {
+        <a routerLink="/demo-shop/cart" class="shop-btn">Back to cart</a>
+        <button type="button" class="shop-btn shop-btn-primary" (click)="tryAnotherCard()">Try another card</button>
+      } @else {
+        <a routerLink="/payments" class="shop-btn">FinCore payments</a>
+      }
+    </div>
+  </section>
+} @else if (cart.isEmpty()) {
+  <h1 class="shop-title">Checkout</h1>
+  <div class="shop-panel shop-empty">
+    <span class="shop-empty-icon" aria-hidden="true">🛒</span>
+    <p>Your cart is empty, so there is nothing to pay for.</p>
+    <a routerLink="/demo-shop" class="shop-btn shop-btn-primary">Browse products</a>
+  </div>
+} @else {
+  <h1 class="shop-title">Checkout</h1>
+  <p class="shop-lead">Review your order and pay with one of your FinCore virtual cards.</p>
+
+  <div class="checkout-layout">
+    <section class="shop-panel">
+      <div class="section-head">
+        <h2 class="shop-h2">Order summary</h2>
+        <a routerLink="/demo-shop/cart" class="edit-link">Edit cart</a>
+      </div>
+      <app-cart-lines />
+      <div class="shop-total-row total">
+        <span>Total</span>
+        <span>{{ cart.total() | money: currency }}</span>
+      </div>
+    </section>
+
+    <section class="fincore-pay" aria-labelledby="fincore-pay-title">
+      <div class="fincore-pay-head">
+        <mat-icon aria-hidden="true">credit_card</mat-icon>
+        <div>
+          <h2 id="fincore-pay-title">Pay with FinCore card</h2>
+          <p>Choose a card. Only cards on GEL accounts can pay in this store.</p>
+        </div>
+      </div>
+
+      <app-card-picker
+        [(selectedId)]="cardId"
+        [requiredCurrency]="currency"
+        label="Card to pay with"
+        (picked)="picked.set($event)"
+      />
+
+      @if (amountError(); as e) {
+        <p class="pay-error" role="alert">{{ e }}</p>
+      }
+
+      <button type="button" class="shop-btn shop-btn-primary shop-btn-block pay" [disabled]="!canPay()" (click)="pay()">
+        Pay {{ cart.total() | money: currency }}
+      </button>
+      @if (!picked()) {
+        <p class="pay-hint">Choose a card to continue.</p>
+      }
+    </section>
+  </div>
+}

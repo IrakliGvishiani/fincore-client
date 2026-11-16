@@ -29,6 +29,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { label: 'Cards', icon: 'credit_card', route: '/cards' },
       { label: 'Payments', icon: 'receipt_long', route: '/payments' },
       { label: 'Analytics', icon: 'insights', route: '/analytics' },
+      { label: 'Demo Shop', icon: 'storefront', route: '/demo-shop' },
     ],
   },
   {

@@ -1,0 +1,104 @@
+// Demo Shop chrome: header, banner, footer (ShopLayoutComponent, not encapsulated, scoped under .shop).
+.shop {
+  // ---- Header ----
+  .shop-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--shop-surface);
+    border-bottom: 1px solid var(--shop-line);
+  }
+  .shop-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 64px;
+  }
+  .shop-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 700 22px/1 var(--shop-serif);
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .shop-logo-mark {
+    color: var(--shop-accent);
+  }
+  .shop-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .shop-back {
+    font-size: 13px;
+    color: var(--shop-muted);
+    text-decoration: none;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--shop-ink);
+      text-decoration: underline;
+    }
+  }
+  .shop-cart-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--shop-line);
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 600;
+
+    &:hover {
+      border-color: var(--shop-ink);
+    }
+  }
+  .shop-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: var(--shop-accent);
+    color: var(--shop-accent-ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  @media (max-width: 520px) {
+    .shop-cart-button > span:not(.shop-badge) {
+      display: none;
+    }
+    .shop-logo {
+      font-size: 19px;
+    }
+  }
+
+  .shop-banner {
+    padding: 8px 0;
+    background: #2b2621;
+    color: #f8f3ec;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .shop-main {
+    flex: 1;
+    padding-top: 28px;
+    padding-bottom: 48px;
+  }
+
+  .shop-footer {
+    padding: 20px 0;
+    border-top: 1px solid var(--shop-line);
+    color: var(--shop-muted);
+    font-size: 12px;
+  }
+
+}
