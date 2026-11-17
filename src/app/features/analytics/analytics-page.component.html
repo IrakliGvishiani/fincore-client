@@ -1,0 +1,124 @@
+<div class="page-header">
+  <h1 class="page-title">Analytics</h1>
+</div>
+
+<section class="filters" aria-label="Period">
+  <mat-form-field class="period" subscriptSizing="dynamic">
+    <mat-label>Period</mat-label>
+    <mat-select [value]="preset()" (selectionChange)="choosePreset($event.value)">
+      @for (p of presets; track p.value) {
+        <mat-option [value]="p.value">{{ p.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (preset() === 'custom') {
+    <form class="custom" [formGroup]="customForm" (ngSubmit)="applyCustom()" novalidate>
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Date range</mat-label>
+        <mat-date-range-input [rangePicker]="picker" [max]="today">
+          <input matStartDate formControlName="start" placeholder="From" />
+          <input matEndDate formControlName="end" placeholder="To" />
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="picker" />
+        <mat-date-range-picker #picker />
+        <mat-hint>Both days included.</mat-hint>
+      </mat-form-field>
+      <button mat-flat-button type="submit">Apply</button>
+    </form>
+  }
+
+  <p class="range-label">
+    {{ range().from | date: 'mediumDate' }} – {{ range().to | date: 'mediumDate' }}
+  </p>
+</section>
+@if (customError(); as e) {
+  <p class="custom-error" role="alert">{{ e }}</p>
+}
+
+@switch (state()) {
+  @case ('loading') {
+    <div class="tiles" aria-busy="true">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <app-skeleton height="92px" radius="12px" />
+      }
+    </div>
+    <app-skeleton height="340px" radius="12px" />
+    <span class="cdk-visually-hidden" role="status">Loading analytics…</span>
+  }
+
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load analytics" [message]="error()">
+      <button mat-flat-button type="button" (click)="load()">Try again</button>
+    </app-state-panel>
+  }
+
+  @default {
+    @if (!currencies().length) {
+      <app-state-panel
+        kind="empty"
+        icon="insights"
+        title="Nothing to show yet"
+        message="Open an account and make a deposit, a transfer or a card payment to see your analytics."
+      >
+        <a mat-flat-button routerLink="/accounts">Go to accounts</a>
+      </app-state-panel>
+    } @else {
+      @if (currencies().length > 1) {
+        <mat-button-toggle-group
+          class="currencies"
+          [value]="currency()"
+          (change)="chooseCurrency($event.value)"
+          aria-label="Currency"
+          hideSingleSelectionIndicator
+        >
+          @for (c of currencies(); track c) {
+            <mat-button-toggle [value]="c">{{ c }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+      }
+
+      @if (summary(); as s) {
+        <div class="tiles">
+          <mat-card appearance="outlined" class="tile" data-kind="income">
+            <span class="tile-label"><mat-icon aria-hidden="true">south_west</mat-icon>Income</span>
+            <span class="tile-value">{{ s.income | money: s.currency }}</span>
+          </mat-card>
+          <mat-card appearance="outlined" class="tile" data-kind="expenses">
+            <span class="tile-label"><mat-icon aria-hidden="true">north_east</mat-icon>Expenses</span>
+            <span class="tile-value">{{ s.expenses | money: s.currency }}</span>
+          </mat-card>
+          <mat-card appearance="outlined" class="tile" [attr.data-kind]="s.netCashFlow < 0 ? 'negative' : 'net'">
+            <span class="tile-label"><mat-icon aria-hidden="true">swap_vert</mat-icon>Net cash flow</span>
+            <span class="tile-value">{{ s.netCashFlow | money: s.currency }}</span>
+          </mat-card>
+          <mat-card appearance="outlined" class="tile">
+            <span class="tile-label"><mat-icon aria-hidden="true">account_balance_wallet</mat-icon>Balance</span>
+            <span class="tile-value">{{ s.balance | money: s.currency }}</span>
+            <span class="tile-note">Now, all open {{ s.currency }} accounts</span>
+          </mat-card>
+        </div>
+
+        @if (active() && series(); as series) {
+          <app-analytics-charts [series]="series" [summary]="s" [currency]="s.currency" />
+        } @else {
+          <app-state-panel
+            kind="empty"
+            icon="bar_chart"
+            title="No income or expenses in this period"
+            [message]="'Nothing was received or spent in ' + s.currency + ' between these dates. Try a longer period.'"
+          />
+        }
+      }
+
+      <p class="explain">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>
+          Income = deposits and transfers from other people. Expenses = card payments and transfers to other people.
+          Currency conversions and transfers between your own accounts are not counted. Days and months are counted in
+          UTC.
+        </span>
+      </p>
+    }
+  }
+}

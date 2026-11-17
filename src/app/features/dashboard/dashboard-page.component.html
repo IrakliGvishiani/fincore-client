@@ -1,0 +1,169 @@
+<header class="hello">
+  <h1 class="page-title">{{ greeting }}{{ firstName() ? ', ' + firstName() : '' }}</h1>
+  <p class="sub">Here is an overview of your money.</p>
+</header>
+
+<!-- Balances -->
+<section aria-labelledby="balances-title">
+  <h2 id="balances-title" class="cdk-visually-hidden">Balances</h2>
+  @switch (accountsState()) {
+    @case ('loading') {
+      <div class="balances" aria-busy="true">
+        @for (i of [1, 2]; track i) {
+          <app-skeleton height="104px" radius="16px" />
+        }
+      </div>
+    }
+    @case ('error') {
+      <app-state-panel kind="error" [compact]="true" title="Couldn't load your accounts" [message]="accountsError()">
+        <button mat-flat-button type="button" (click)="loadAccounts()">Try again</button>
+      </app-state-panel>
+    }
+    @default {
+      @if (balances().length) {
+        <div class="balances">
+          @for (b of balances(); track b.currency) {
+            <mat-card appearance="outlined" class="balance">
+              <span class="balance-currency">{{ b.currency }}</span>
+              <span class="balance-total">{{ b.total | money: b.currency }}</span>
+              <span class="sub">{{ b.activeCount }} active {{ b.activeCount === 1 ? 'account' : 'accounts' }}</span>
+            </mat-card>
+          }
+        </div>
+        @if (frozenCount()) {
+          <p class="note">
+            Frozen accounts ({{ frozenCount() }}) are not included in these totals.
+          </p>
+        }
+      } @else if (hasAccounts()) {
+        <p class="note">None of your accounts is active, so there is no available balance.</p>
+      } @else {
+        <app-state-panel
+          kind="empty"
+          icon="account_balance"
+          title="Welcome to FinCore"
+          message="Open your first account to deposit money, send transfers and get a virtual card."
+        >
+          <button mat-flat-button type="button" (click)="openAccount()">Open an account</button>
+        </app-state-panel>
+      }
+    }
+  }
+</section>
+
+<!-- Quick actions -->
+<nav class="quick" aria-label="Quick actions">
+  <a mat-stroked-button routerLink="/transfers/new"><mat-icon>send</mat-icon>New transfer</a>
+  <a mat-stroked-button routerLink="/conversions/new"><mat-icon>currency_exchange</mat-icon>Convert</a>
+  <span
+    [matTooltip]="
+      accountsState() === 'ready' && !canOpenAccount() ? 'You can have up to ' + maxOpen + ' open accounts.' : ''
+    "
+  >
+    <button mat-stroked-button type="button" [disabled]="!canOpenAccount()" (click)="openAccount()">
+      <mat-icon>add_card</mat-icon>Open account
+    </button>
+  </span>
+  <a mat-stroked-button routerLink="/demo-shop"><mat-icon>storefront</mat-icon>Demo Shop</a>
+  <a mat-stroked-button routerLink="/analytics"><mat-icon>insights</mat-icon>Analytics</a>
+</nav>
+
+<div class="columns">
+  <!-- Recent transfers -->
+  <mat-card appearance="outlined" class="panel">
+    <div class="panel-head">
+      <h2>Recent transfers</h2>
+      <a mat-button routerLink="/transfers">View all</a>
+    </div>
+    @switch (transfersState()) {
+      @case ('loading') {
+        <div class="rows" aria-busy="true">
+          @for (i of [1, 2, 3]; track i) {
+            <app-skeleton height="44px" />
+          }
+        </div>
+      }
+      @case ('error') {
+        <app-state-panel kind="error" [compact]="true" title="Couldn't load transfers" [message]="transfersError()">
+          <button mat-stroked-button type="button" (click)="loadTransfers()">Try again</button>
+        </app-state-panel>
+      }
+      @default {
+        @if (transfers().length) {
+          <ul class="list">
+            @for (t of transfers(); track t.id) {
+              <li>
+                <a class="row" [routerLink]="['/transfers', t.id]">
+                  <mat-icon class="dir" [attr.data-direction]="t.direction" aria-hidden="true">
+                    {{ t.direction === 'Incoming' ? 'south_west' : 'north_east' }}
+                  </mat-icon>
+                  <span class="main">
+                    <span class="title">
+                      {{ t.direction === 'Incoming' ? 'From' : 'To' }}
+                      <span class="mono">{{ t.counterPartyAccountNumber | accountNumber }}</span>
+                    </span>
+                    <span class="sub">{{ t.createdAt | utcDate: 'medium' }}{{ t.description ? ' · ' + t.description : '' }}</span>
+                  </span>
+                  <span class="amount" [attr.data-direction]="t.direction">
+                    {{ t.direction === 'Incoming' ? '+' : '−' }}{{ t.amount | money: t.currency }}
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-state-panel kind="empty" [compact]="true" icon="swap_horiz" title="No transfers yet">
+            <a mat-stroked-button routerLink="/transfers/new">Send money</a>
+          </app-state-panel>
+        }
+      }
+    }
+  </mat-card>
+
+  <!-- Accounts -->
+  <mat-card appearance="outlined" class="panel">
+    <div class="panel-head">
+      <h2>My accounts</h2>
+      <a mat-button routerLink="/accounts">View all</a>
+    </div>
+    @switch (accountsState()) {
+      @case ('loading') {
+        <div class="rows" aria-busy="true">
+          @for (i of [1, 2, 3]; track i) {
+            <app-skeleton height="44px" />
+          }
+        </div>
+      }
+      @case ('error') {
+        <app-state-panel kind="error" [compact]="true" title="Couldn't load your accounts" [message]="accountsError()">
+          <button mat-stroked-button type="button" (click)="loadAccounts()">Try again</button>
+        </app-state-panel>
+      }
+      @default {
+        @if (openAccounts().length) {
+          <ul class="list">
+            @for (a of openAccounts(); track a.id) {
+              <li>
+                <a class="row" [routerLink]="['/accounts', a.accountNumber]">
+                  <mat-icon class="acc" aria-hidden="true">account_balance</mat-icon>
+                  <span class="main">
+                    <span class="title">{{ a.name }}</span>
+                    <span class="sub mono">•••• {{ a.accountNumber.slice(-4) }}</span>
+                  </span>
+                  @if (a.status !== 'Active') {
+                    <app-status-badge [status]="a.status" />
+                  }
+                  <span class="amount">{{ a.balance | money: a.currency }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-state-panel kind="empty" [compact]="true" icon="account_balance" title="No open accounts">
+            <button mat-stroked-button type="button" (click)="openAccount()">Open an account</button>
+          </app-state-panel>
+        }
+      }
+    }
+  </mat-card>
+</div>

@@ -82,7 +82,12 @@ export const routes: Routes = [
         path: '',
         canActivateChild: [roleGuard('Customer')],
         children: [
-          { path: 'dashboard', ...placeholder('Dashboard', 9) },
+          {
+            path: 'dashboard',
+            title: 'Dashboard',
+            loadComponent: () =>
+              import('./features/dashboard/dashboard-page.component').then((m) => m.DashboardPageComponent),
+          },
           {
             path: 'accounts',
             title: 'Accounts',
@@ -162,7 +167,12 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/payments/payments-page.component').then((m) => m.PaymentsPageComponent),
           },
-          { path: 'analytics', ...placeholder('Analytics', 9) },
+          {
+            path: 'analytics',
+            title: 'Analytics',
+            loadComponent: () =>
+              import('./features/analytics/analytics-page.component').then((m) => m.AnalyticsPageComponent),
+          },
         ],
       },
 
@@ -171,11 +181,11 @@ export const routes: Routes = [
         path: 'manager',
         canActivateChild: [roleGuard('Manager', 'Admin')],
         children: [
-          { path: '', pathMatch: 'full', ...placeholder('Monitoring overview', 10) },
-          { path: 'transfers', ...placeholder('Transfer monitoring', 10) },
-          { path: 'accounts', ...placeholder('Account monitoring', 10) },
-          { path: 'conversions', ...placeholder('Conversion monitoring', 10) },
-          { path: 'suspicious', ...placeholder('Suspicious activity', 10) },
+          { path: '', pathMatch: 'full', ...placeholder('Monitoring overview', 11) },
+          { path: 'transfers', ...placeholder('Transfer monitoring', 11) },
+          { path: 'accounts', ...placeholder('Account monitoring', 11) },
+          { path: 'conversions', ...placeholder('Conversion monitoring', 11) },
+          { path: 'suspicious', ...placeholder('Suspicious activity', 11) },
         ],
       },
 
@@ -185,9 +195,9 @@ export const routes: Routes = [
         canActivateChild: [roleGuard('Admin')],
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'users' },
-          { path: 'users', ...placeholder('Users', 11) },
-          { path: 'staff/new', ...placeholder('Create staff account', 11) },
-          { path: 'audit-logs', ...placeholder('Audit logs', 11) },
+          { path: 'users', ...placeholder('Users', 12) },
+          { path: 'staff/new', ...placeholder('Create staff account', 12) },
+          { path: 'audit-logs', ...placeholder('Audit logs', 12) },
         ],
       },
 
