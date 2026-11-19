@@ -1,23 +1,27 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterOutlet } from '@angular/router';
 
-/** Centered card layout for login, register, confirm-email and password pages. */
+/**
+ * Centered card layout for login, register, confirm-email and password pages. Never used for the bare "/"
+ * (see `nonEmptyUrlMatch`), so the card always has a page inside. The logo and "Back to home" go to "/".
+ */
 @Component({
   selector: 'app-auth-layout',
-  imports: [RouterOutlet, MatCardModule, MatIconModule],
+  imports: [RouterOutlet, RouterLink, MatCardModule, MatIconModule],
   template: `
     <div class="auth-page">
-      <div class="brand">
-        <mat-icon class="brand-icon">account_balance</mat-icon>
+      <a class="brand" routerLink="/" aria-label="FinCore home">
+        <mat-icon class="brand-icon" aria-hidden="true">account_balance</mat-icon>
         <span>FinCore</span>
-      </div>
+      </a>
       <mat-card appearance="outlined" class="auth-card">
         <mat-card-content>
           <router-outlet />
         </mat-card-content>
       </mat-card>
+      <a class="home-link" routerLink="/"><mat-icon aria-hidden="true">arrow_back</mat-icon>Back to home</a>
       <p class="footnote">Digital banking simulator. No real money is involved.</p>
     </div>
   `,
@@ -34,6 +38,8 @@ import { RouterOutlet } from '@angular/router';
     }
     .brand {
       display: flex;
+      text-decoration: none;
+      border-radius: 8px;
       align-items: center;
       gap: 8px;
       color: var(--mat-sys-primary);
@@ -48,6 +54,29 @@ import { RouterOutlet } from '@angular/router';
       width: 100%;
       max-width: 440px;
       padding: 8px;
+    }
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: -8px;
+      color: var(--mat-sys-primary);
+      font: var(--mat-sys-label-large);
+      text-decoration: none;
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+    .brand:focus-visible,
+    .home-link:focus-visible {
+      outline: 3px solid var(--mat-sys-primary);
+      outline-offset: 4px;
     }
     .footnote {
       margin: 0;

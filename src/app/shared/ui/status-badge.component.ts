@@ -16,6 +16,7 @@ const TONES: Record<string, Tone> = {
   Failed: 'danger',
   Expired: 'danger',
   High: 'danger',
+  Banned: 'danger',
   Closed: 'neutral',
   Cancelled: 'neutral',
 };

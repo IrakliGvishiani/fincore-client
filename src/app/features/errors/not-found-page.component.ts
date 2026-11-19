@@ -11,7 +11,8 @@ import { RouterLink } from '@angular/router';
       <mat-icon class="status-icon">search_off</mat-icon>
       <h1>Page not found</h1>
       <p>The page you are looking for does not exist.</p>
-      <a mat-flat-button routerLink="/">Back to FinCore</a>
+      <!-- "/" = landing page when signed out, the role home when signed in. -->
+      <a mat-flat-button routerLink="/"><mat-icon>home</mat-icon>Go to home</a>
     </section>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

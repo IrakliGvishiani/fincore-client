@@ -1,21 +1,23 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard, homeRedirect, roleGuard } from './core/guards/auth.guards';
+import { authGuard, guestGuard, guestOnlyMatch, homeRedirect, nonEmptyUrlMatch, roleGuard } from './core/guards/auth.guards';
 import { AuthLayoutComponent } from './layout/auth-layout/auth-layout.component';
 import { ShellComponent } from './layout/shell/shell.component';
 
-/** Temporary target for screens built in later steps (`step` = implementation-plan step). */
-const placeholder = (title: string, step: number) => ({
-  title,
-  loadComponent: () =>
-    import('./features/placeholder/placeholder-page.component').then((m) => m.PlaceholderPageComponent),
-  data: { title, step },
-});
-
 export const routes: Routes = [
-  // Public auth pages (guests only).
+  // "/" for guests: the public landing page. Signed in → falls through to the shell's homeRedirect below.
+  {
+    path: '',
+    pathMatch: 'full',
+    canMatch: [guestOnlyMatch],
+    title: 'Digital banking simulator',
+    loadComponent: () => import('./features/landing/landing-page.component').then((m) => m.LandingPageComponent),
+  },
+
+  // Public auth pages (guests only). Never matches the bare "/" (that rendered an empty card before).
   {
     path: '',
     component: AuthLayoutComponent,
+    canMatch: [nonEmptyUrlMatch],
     canActivate: [guestGuard],
     children: [
       {
@@ -41,6 +43,15 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/auth/forgot-password/forgot-password-page.component').then(
             (m) => m.ForgotPasswordPageComponent,
+          ),
+      },
+      {
+        // The startup restore could not reach the server; the refresh token was kept (guards send protected pages here).
+        path: 'session-unavailable',
+        title: 'Connection problem',
+        loadComponent: () =>
+          import('./features/auth/session-unavailable/session-unavailable-page.component').then(
+            (m) => m.SessionUnavailablePageComponent,
           ),
       },
       {
@@ -179,26 +190,19 @@ export const routes: Routes = [
       // Manager + Admin
       {
         path: 'manager',
+        // Lazy; the role is checked before the chunk loads (canActivate) and on every child navigation.
+        canActivate: [roleGuard('Manager', 'Admin')],
         canActivateChild: [roleGuard('Manager', 'Admin')],
-        children: [
-          { path: '', pathMatch: 'full', ...placeholder('Monitoring overview', 11) },
-          { path: 'transfers', ...placeholder('Transfer monitoring', 11) },
-          { path: 'accounts', ...placeholder('Account monitoring', 11) },
-          { path: 'conversions', ...placeholder('Conversion monitoring', 11) },
-          { path: 'suspicious', ...placeholder('Suspicious activity', 11) },
-        ],
+        loadChildren: () => import('./features/manager/manager.routes').then((m) => m.MANAGER_ROUTES),
       },
 
       // Admin
       {
         path: 'admin',
+        // Admin only, checked before the lazy chunk loads and on every child navigation (not just hidden menu items).
+        canActivate: [roleGuard('Admin')],
         canActivateChild: [roleGuard('Admin')],
-        children: [
-          { path: '', pathMatch: 'full', redirectTo: 'users' },
-          { path: 'users', ...placeholder('Users', 12) },
-          { path: 'staff/new', ...placeholder('Create staff account', 12) },
-          { path: 'audit-logs', ...placeholder('Audit logs', 12) },
-        ],
+        loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
       },
 
       {

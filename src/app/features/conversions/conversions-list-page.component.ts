@@ -20,6 +20,7 @@ import { UtcDatePipe } from '../../shared/pipes/utc-date.pipe';
 import { StatePanelComponent } from '../../shared/ui/state-panel.component';
 import { CONVERSION_LIMITS, ConversionHistoryFilter, ConversionsApi } from './conversions.api';
 import { formatFeeRate, formatRate } from './new-conversion/conversion-form';
+import { FilterBarComponent } from '../../shared/filters/filter-bar.component';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -29,6 +30,7 @@ const NO_FILTER: ConversionHistoryFilter = { fromDate: null, toDate: null, fromC
 @Component({
   selector: 'app-conversions-list-page',
   imports: [
+    FilterBarComponent,
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,

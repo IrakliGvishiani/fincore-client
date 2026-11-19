@@ -1,4 +1,5 @@
 @use '@angular/material' as mat;
+@use './app/shared/filters/filter-bar';
 
 html {
   color-scheme: light;

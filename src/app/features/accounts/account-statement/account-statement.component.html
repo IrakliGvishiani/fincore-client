@@ -31,21 +31,18 @@
     </div>
   }
 
-  <form class="filters" [formGroup]="rangeForm" (ngSubmit)="applyRange()">
-    <mat-form-field class="range-field" subscriptSizing="dynamic">
-      <mat-label>Date range</mat-label>
-      <mat-date-range-input [rangePicker]="picker" [max]="today">
-        <input matStartDate formControlName="start" placeholder="From" />
-        <input matEndDate formControlName="end" placeholder="To" />
-      </mat-date-range-input>
-      <mat-datepicker-toggle matIconSuffix [for]="picker" />
-      <mat-date-range-picker #picker />
-      <mat-hint>Both days are included.</mat-hint>
-    </mat-form-field>
-    <div class="filter-actions">
-      <button mat-flat-button type="submit">Apply</button>
-      <button mat-button type="button" (click)="clearRange()">Clear</button>
-    </div>
+  <form [formGroup]="rangeForm" (ngSubmit)="applyRange()" novalidate>
+    <app-filter-bar [canClear]="!!(range().from || range().to)" (cleared)="clearRange()">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-wide">
+        <mat-label>Dates</mat-label>
+        <mat-date-range-input [rangePicker]="picker" [max]="today">
+          <input matStartDate formControlName="start" placeholder="From" />
+          <input matEndDate formControlName="end" placeholder="To (included)" />
+        </mat-date-range-input>
+        <mat-datepicker-toggle matIconSuffix [for]="picker" />
+        <mat-date-range-picker #picker />
+      </mat-form-field>
+    </app-filter-bar>
   </form>
 
   @switch (state()) {

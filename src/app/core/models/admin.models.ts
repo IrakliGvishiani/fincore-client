@@ -12,6 +12,8 @@ export interface UserListItemDto {
   profilePhotoUrl: string | null;
   createdAt: IsoDateString;
   roles: Role[];
+  /** Banned by an administrator (IsAdminLocked); not set by password lockouts. */
+  isBanned: boolean;
 }
 
 export interface UserDetailsDto extends UserListItemDto {

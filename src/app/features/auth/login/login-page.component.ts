@@ -10,7 +10,7 @@ import { finalize } from 'rxjs';
 import { ApiError } from '../../../core/api/api-error';
 import { isEmailNotConfirmed, loginErrorMessage } from '../../../core/api/error-messages';
 import { AuthService } from '../../../core/auth/auth.service';
-import { safeReturnUrl } from '../../../core/auth/return-url';
+import { returnUrlForRoles } from '../../../core/auth/return-url';
 import { fieldError } from '../../../shared/forms/field-error';
 import { PATTERNS, trimmed } from '../../../shared/forms/validators';
 import { FormAlertComponent } from '../../../shared/ui/form-alert.component';
@@ -68,7 +68,7 @@ export class LoginPageComponent implements OnInit {
       .login(email, this.form.controls.password.value)
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: () => void this.router.navigateByUrl(safeReturnUrl(this.returnUrl()) ?? this.auth.homeUrl()),
+        next: () => void this.router.navigateByUrl(returnUrlForRoles(this.returnUrl(), this.auth.roles()) ?? this.auth.homeUrl()),
         error: (err: unknown) => {
           const e = ApiError.from(err);
           if (isEmailNotConfirmed(e)) {

@@ -54,10 +54,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           }
 
           return auth.refresh().pipe(
-            catchError(() => {
-              // Refresh token rejected (session cleared) → log out; otherwise a transient failure.
-              if (!auth.hasRefreshToken()) auth.expireSession();
-              return throwError(() => err);
+            catchError((refreshErr: unknown) => {
+              // Refresh token rejected (400/401: session cleared) → log out with the original 401.
+              if (!auth.hasRefreshToken()) {
+                auth.expireSession();
+                return throwError(() => err);
+              }
+              // Network/5xx: the session is kept; report THAT error ("can't reach the server"), not a 401.
+              return throwError(() => refreshErr);
             }),
             switchMap((newToken) => next(withToken(req, newToken))),
           );

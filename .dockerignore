@@ -1,0 +1,18 @@
+# Keep the build context small and free of local artefacts.
+node_modules
+dist
+.angular
+.git
+.gitignore
+.vscode
+.idea
+coverage
+tmp
+out-tsc
+*.log
+docs
+*.md
+Dockerfile
+.dockerignore
+.env
+.env.*

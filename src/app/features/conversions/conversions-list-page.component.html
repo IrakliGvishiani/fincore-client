@@ -6,42 +6,38 @@
   </a>
 </div>
 
-<form class="filters" [formGroup]="filterForm" (ngSubmit)="applyFilter()">
-  <mat-form-field class="range-field" subscriptSizing="dynamic">
-    <mat-label>Date range</mat-label>
-    <mat-date-range-input [rangePicker]="picker" [max]="today">
-      <input matStartDate formControlName="start" placeholder="From" />
-      <input matEndDate formControlName="end" placeholder="To" />
-    </mat-date-range-input>
-    <mat-datepicker-toggle matIconSuffix [for]="picker" />
-    <mat-date-range-picker #picker />
-    <mat-hint>Both days are included.</mat-hint>
-  </mat-form-field>
+<form [formGroup]="filterForm" (ngSubmit)="applyFilter()" novalidate>
+  <app-filter-bar [canClear]="filtered()" (cleared)="clearFilter()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-wide">
+      <mat-label>Dates</mat-label>
+      <mat-date-range-input [rangePicker]="picker" [max]="today">
+        <input matStartDate formControlName="start" placeholder="From" />
+        <input matEndDate formControlName="end" placeholder="To (included)" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-date-range-picker #picker />
+    </mat-form-field>
 
-  <mat-form-field class="currency-field" subscriptSizing="dynamic">
-    <mat-label>From currency</mat-label>
-    <mat-select formControlName="fromCurrency">
-      <mat-option [value]="null">Any</mat-option>
-      @for (c of currencies; track c) {
-        <mat-option [value]="c">{{ c }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>From currency</mat-label>
+      <mat-select formControlName="fromCurrency">
+        <mat-option [value]="null">Any</mat-option>
+        @for (c of currencies; track c) {
+          <mat-option [value]="c">{{ c }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
 
-  <mat-form-field class="currency-field" subscriptSizing="dynamic">
-    <mat-label>To currency</mat-label>
-    <mat-select formControlName="toCurrency">
-      <mat-option [value]="null">Any</mat-option>
-      @for (c of currencies; track c) {
-        <mat-option [value]="c">{{ c }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-
-  <div class="filter-actions">
-    <button mat-flat-button type="submit">Apply</button>
-    <button mat-button type="button" (click)="clearFilter()">Clear</button>
-  </div>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>To currency</mat-label>
+      <mat-select formControlName="toCurrency">
+        <mat-option [value]="null">Any</mat-option>
+        @for (c of currencies; track c) {
+          <mat-option [value]="c">{{ c }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </app-filter-bar>
 </form>
 
 @switch (state()) {

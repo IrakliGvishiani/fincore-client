@@ -29,25 +29,6 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 8px 12px;
-  margin: 16px 0 8px;
-}
-
-.range-field {
-  flex: 1 1 280px;
-  max-width: 360px;
-}
-
-.filter-actions {
-  display: flex;
-  gap: 8px;
-  padding-top: 8px;
-}
-
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--mat-sys-outline-variant);

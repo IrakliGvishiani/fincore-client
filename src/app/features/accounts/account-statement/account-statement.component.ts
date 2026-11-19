@@ -1,4 +1,5 @@
 import { formatDate } from '@angular/common';
+import { FilterBarComponent } from '../../../shared/filters/filter-bar.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -45,6 +46,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-account-statement',
   imports: [
+    FilterBarComponent,
     ReactiveFormsModule,
     MatDatepickerModule,
     MatFormFieldModule,

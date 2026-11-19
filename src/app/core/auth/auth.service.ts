@@ -29,6 +29,14 @@ const HOME_BY_ROLE: ReadonlyArray<[Role, string]> = [
   ['Customer', '/dashboard'],
 ];
 
+/** Only these refresh-token answers mean "the token is rejected" and end the session; 5xx/network keep it. */
+export function isRefreshRejection(error: { status: number }): boolean {
+  return error.status === 400 || error.status === 401;
+}
+
+/** Toast shown once when a session ends on its own (refresh rejected: expired, revoked or banned). */
+export const SESSION_ENDED_MESSAGE = 'Your session has ended. Please sign in again.';
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly authApi = inject(AuthApi);
@@ -40,7 +48,12 @@ export class AuthService {
   private readonly _accessToken = signal<string | null>(null);
   private readonly _profile = signal<ProfileDto | null>(null);
   private refreshInFlight$: Observable<string> | null = null;
-  private expiring = false;
+  private restorePromise: Promise<void> | null = null;
+  private readonly _restoreFailed = signal(false);
+  /** The startup restore could not reach the server (network/5xx); the refresh token is still stored. */
+  readonly restoreFailed = this._restoreFailed.asReadonly();
+  /** expireSession() already ran for the current session (reset when a new session starts). */
+  private sessionEnded = false;
   private profileLoading = false;
 
   /** Decoded claims of the current access token. */
@@ -108,9 +121,7 @@ export class AuthService {
       catchError((err) => {
         const error = ApiError.from(err);
         // Only a rejected token ends the session; network/server failures keep it for a later retry.
-        if (error.status === 400 || error.status === 401 || error.status === 404) {
-          this.clearSession();
-        }
+        if (isRefreshRejection(error)) this.clearSession();
         return throwError(() => error);
       }),
       finalize(() => (this.refreshInFlight$ = null)),
@@ -119,14 +130,36 @@ export class AuthService {
     return this.refreshInFlight$;
   }
 
-  /** App start: the access token is memory-only, so rebuild the session from the stored refresh token. */
-  async restoreSession(): Promise<void> {
+  /**
+   * App start: the access token is memory-only, so rebuild the session from the stored refresh token.
+   * Runs ONCE (memoized); never rejects. Afterwards: authenticated (new access token stored), logged out (the
+   * refresh token was rejected → cleared), or `restoreFailed()` (network/5xx: the refresh token is KEPT so the
+   * user can retry; see SessionUnavailablePageComponent). The profile loads afterwards and never blocks it.
+   */
+  restoreSession(): Promise<void> {
+    this.restorePromise ??= this.doRestore();
+    return this.restorePromise;
+  }
+
+  /**
+   * Resolves when the startup restore has settled (success or failure). EVERY guard awaits this before
+   * deciding, so no route is activated or redirected while the restore is still pending — whatever order
+   * Angular runs app initializers in (the blocking initial navigation runs in parallel with them).
+   */
+  whenSessionReady(): Promise<void> {
+    return this.restoreSession();
+  }
+
+  private async doRestore(): Promise<void> {
     if (!this.hasRefreshToken()) return;
     try {
       await firstValueFrom(this.refresh());
-      this.ensureProfile();
-    } catch {
-      // Expired or revoked refresh token: stay logged out.
+      this._restoreFailed.set(false);
+      this.ensureProfile(); // fire and forget: "authenticated" does not wait for the profile
+    } catch (err) {
+      // Rejected (400/401): refresh() already cleared the session → logged out.
+      // Network/5xx: keep the refresh token; guards send protected pages to the retry page.
+      this._restoreFailed.set(!isRefreshRejection(ApiError.from(err)) && this.hasRefreshToken());
     }
   }
 
@@ -154,6 +187,7 @@ export class AuthService {
 
   /** Revokes the refresh token (best effort), clears the session and goes to /login. */
   logout(): void {
+    this.sessionEnded = true; // requests still in flight that now get 401 stay quiet
     const refreshToken = this.storage.getRefreshToken();
     this.clearSession();
     if (refreshToken) {
@@ -162,16 +196,19 @@ export class AuthService {
     void this.router.navigate(['/login']);
   }
 
-  /** Called by the auth interceptor when the session cannot be recovered. */
+  /**
+   * Called by the auth interceptor when the session cannot be recovered (401 and the one refresh attempt was
+   * rejected, e.g. the user was banned or the refresh token expired). Runs ONCE per session: requests that
+   * fail later with the same 401 (in flight, or after the redirect) add no second toast or navigation.
+   */
   expireSession(): void {
-    if (this.expiring) return;
-    this.expiring = true;
+    if (this.sessionEnded) return;
+    this.sessionEnded = true;
     const returnUrl = this.router.url;
     this.clearSession();
-    this.toast.info('Your session has expired. Please sign in again.');
+    this.toast.info(SESSION_ENDED_MESSAGE);
     void this.router
-      .navigate(['/login'], { queryParams: returnUrl && returnUrl !== '/' && !returnUrl.startsWith('/login') ? { returnUrl } : {} })
-      .finally(() => (this.expiring = false));
+      .navigate(['/login'], { queryParams: returnUrl && returnUrl !== '/' && !returnUrl.startsWith('/login') ? { returnUrl } : {} });
   }
 
   clearSession(): void {
@@ -186,6 +223,8 @@ export class AuthService {
   }
 
   private setTokens(tokens: LoginResponse): void {
+    this._restoreFailed.set(false);
+    this.sessionEnded = false;
     this._accessToken.set(tokens.accessToken);
     this.storage.setRefreshToken(tokens.refreshToken);
   }

@@ -1,0 +1,84 @@
+@use '@angular/material' as mat;
+
+// Shared look of EVERY filter bar (FilterBarComponent, host class .filter-bar). Global because the fields are
+// projected from the page's own form, so a component stylesheet could not reach them without ::ng-deep.
+// Used by /manager/*, customer conversions history and the account statement; step 12 admin screens reuse it.
+
+.filter-bar {
+  display: block;
+  margin-bottom: 16px;
+
+  // Compact Material fields (density -3 → 44px outline fields), only inside filter bars.
+  @include mat.form-field-density(-3);
+  @include mat.select-density(-3);
+  @include mat.icon-button-density(-3);
+  @include mat.datepicker-density(-3);
+
+
+  .filter-bar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start; // an error under one field never moves the others
+    gap: 8px 12px;
+  }
+
+  // Same width scale for text, select and date fields.
+  .mat-mdc-form-field {
+    flex: 1 1 160px;
+    min-width: 160px;
+    max-width: 220px;
+  }
+  // Wider controls: search boxes and date-range pickers.
+  .mat-mdc-form-field.filter-wide {
+    flex-basis: 240px;
+    max-width: 300px;
+  }
+
+  .filter-bar-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-height: 44px; // the compact field height, so buttons sit on the fields' line
+  }
+
+  // Info icon replacing hint lines (the explanation is in its tooltip).
+  .filter-info {
+    width: 18px;
+    height: 18px;
+    padding: 0 8px 0 2px;
+    font-size: 18px;
+    color: var(--mat-sys-on-surface-variant);
+    cursor: help;
+  }
+
+  .filter-bar-error {
+    margin: 6px 0 0;
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-error);
+  }
+
+  .filter-bar-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  // Phones: two controls per row where they fit, otherwise full width; never a horizontal page scroll.
+  @media (max-width: 600px) {
+    .mat-mdc-form-field,
+    .mat-mdc-form-field.filter-wide {
+      flex: 1 1 calc(50% - 6px);
+      min-width: min(100%, 140px);
+      max-width: none;
+    }
+    .filter-bar-buttons {
+      flex: 1 1 100%;
+    }
+  }
+}

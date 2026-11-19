@@ -1,34 +1,3 @@
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.range-field {
-  flex: 1 1 260px;
-  max-width: 320px;
-}
-
-.currency-field {
-  flex: 0 1 150px;
-}
-
-.filter-actions {
-  display: flex;
-  gap: 4px;
-  padding-top: 8px;
-}
-
-@media (max-width: 600px) {
-  .range-field,
-  .currency-field {
-    flex-basis: 100%;
-    max-width: none;
-  }
-}
-
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--mat-sys-outline-variant);

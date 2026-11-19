@@ -1,0 +1,132 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Monitoring overview</h1>
+    <p class="muted lead">{{ firstName() ? 'Welcome, ' + firstName() + '. ' : '' }}Bank-wide figures. "Today" is the current UTC day.</p>
+  </div>
+  <button mat-stroked-button type="button" (click)="load(); loadAttention()"><mat-icon>refresh</mat-icon>Refresh</button>
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <div class="tiles" aria-busy="true">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <app-skeleton height="88px" radius="12px" />
+      }
+    </div>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load the overview" [message]="error()">
+      <button mat-flat-button type="button" (click)="load()">Try again</button>
+    </app-state-panel>
+  }
+  @default {
+    @if (stats(); as s) {
+      <div class="tiles">
+        <a class="tile" routerLink="/manager/transfers">
+          <span class="tile-label">Transfers today</span>
+          <span class="tile-value">{{ s.todayTransfers }}</span>
+          <span class="tile-note">{{ s.totalTransfers }} in total</span>
+        </a>
+        <a class="tile" routerLink="/manager/conversions">
+          <span class="tile-label">Conversions today</span>
+          <span class="tile-value">{{ s.todayConversions }}</span>
+          <span class="tile-note">{{ s.totalConversions }} in total</span>
+        </a>
+        <a class="tile" routerLink="/manager/accounts">
+          <span class="tile-label">Accounts</span>
+          <span class="tile-value">{{ s.totalAccounts }}</span>
+          <span class="tile-note">{{ s.activeAccounts }} active</span>
+        </a>
+        <a class="tile" routerLink="/manager/accounts" [queryParams]="{ status: 'Frozen' }">
+          <span class="tile-label">Frozen accounts</span>
+          <span class="tile-value">{{ s.frozenAccounts }}</span>
+          <span class="tile-note">{{ s.closedAccounts }} closed</span>
+        </a>
+        <div class="tile">
+          <span class="tile-label">Users</span>
+          <span class="tile-value">{{ s.totalUsers }}</span>
+          <span class="tile-note">All roles</span>
+        </div>
+        <a class="tile" routerLink="/manager/transfers" [queryParams]="{ status: 'Failed' }">
+          <span class="tile-label">Failed transfers</span>
+          <span class="tile-value">{{ s.failedTransfers }}</span>
+          <span class="tile-note">{{ s.pendingTransfers }} pending</span>
+        </a>
+      </div>
+
+      <div class="charts">
+        <mat-card appearance="outlined" class="chart-card">
+          <mat-card-header><mat-card-title>Transfers by status</mat-card-title></mat-card-header>
+          <mat-card-content>
+            @defer (on viewport) {
+              <app-status-doughnut [slices]="transferSlices()" label="Transfers by status" />
+            } @placeholder {
+              <app-skeleton height="210px" />
+            } @loading (minimum 200ms) {
+              <app-skeleton height="210px" />
+            } @error {
+              <p class="muted">The chart could not be loaded.</p>
+            }
+          </mat-card-content>
+        </mat-card>
+        <mat-card appearance="outlined" class="chart-card">
+          <mat-card-header><mat-card-title>Accounts by status</mat-card-title></mat-card-header>
+          <mat-card-content>
+            @defer (on viewport) {
+              <app-status-doughnut [slices]="accountSlices()" label="Accounts by status" />
+            } @placeholder {
+              <app-skeleton height="210px" />
+            } @loading (minimum 200ms) {
+              <app-skeleton height="210px" />
+            } @error {
+              <p class="muted">The chart could not be loaded.</p>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+    }
+  }
+}
+
+<mat-card appearance="outlined" class="attention">
+  <div class="attention-head">
+    <h2>
+      Suspicious activities needing attention
+      @if (attentionState() === 'ready' && attentionTotal()) {
+        <span class="count">{{ attentionTotal() }}</span>
+      }
+    </h2>
+    <a mat-button routerLink="/manager/suspicious" [queryParams]="{ status: 'Detected' }">View all</a>
+  </div>
+  @switch (attentionState()) {
+    @case ('loading') {
+      <div class="rows">
+        @for (i of [1, 2, 3]; track i) {
+          <app-skeleton height="40px" />
+        }
+      </div>
+    }
+    @case ('error') {
+      <app-state-panel kind="error" [compact]="true" title="Couldn't load suspicious activities" [message]="attentionError()">
+        <button mat-stroked-button type="button" (click)="loadAttention()">Try again</button>
+      </app-state-panel>
+    }
+    @default {
+      @if (attention().length) {
+        <ul class="attention-list">
+          @for (a of attention(); track a.id) {
+            <li>
+              <a [routerLink]="['/manager/suspicious', a.id]">
+                <app-status-badge [status]="a.riskLevel" />
+                <span class="reason">{{ a.reason }}</span>
+                <span class="muted small nowrap">score {{ a.riskScore }} · {{ a.createdAt | utcDate: 'short' }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <app-state-panel kind="empty" [compact]="true" icon="verified_user" title="Nothing waiting for review" />
+      }
+    }
+  }
+</mat-card>

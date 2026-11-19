@@ -36,11 +36,11 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     title: 'Monitoring',
     roles: ['Manager', 'Admin'],
     items: [
-      { label: 'Overview', icon: 'space_dashboard', route: '/manager', exact: true },
+      { label: 'Monitoring dashboard', icon: 'space_dashboard', route: '/manager', exact: true },
       { label: 'Transfers', icon: 'swap_horiz', route: '/manager/transfers' },
       { label: 'Accounts', icon: 'account_balance', route: '/manager/accounts' },
       { label: 'Conversions', icon: 'currency_exchange', route: '/manager/conversions' },
-      { label: 'Suspicious activity', icon: 'gpp_maybe', route: '/manager/suspicious' },
+      { label: 'Suspicious activities', icon: 'gpp_maybe', route: '/manager/suspicious' },
     ],
   },
   {
@@ -48,8 +48,8 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     roles: ['Admin'],
     items: [
       { label: 'Users', icon: 'group', route: '/admin/users' },
-      { label: 'Create staff', icon: 'person_add', route: '/admin/staff/new' },
       { label: 'Audit logs', icon: 'history', route: '/admin/audit-logs' },
+      { label: 'Create staff', icon: 'person_add', route: '/admin/staff/new' },
     ],
   },
   {

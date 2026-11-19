@@ -1,0 +1,136 @@
+<a mat-button routerLink="/manager/accounts" class="back"><mat-icon>arrow_back</mat-icon>All accounts</a>
+
+@switch (detail.state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading account…" />
+  }
+  @case ('not-found') {
+    <app-state-panel kind="empty" icon="search_off" title="Account not found" message="There is no account with this ID.">
+      <a mat-flat-button routerLink="/manager/accounts">Back to accounts</a>
+    </app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load the account" [message]="detail.error()">
+      <button mat-flat-button type="button" (click)="detail.reload()">Try again</button>
+    </app-state-panel>
+  }
+  @default {
+    @if (detail.data(); as a) {
+      <div class="page-header">
+        <h1 class="page-title">{{ a.name }}</h1>
+        <app-status-badge [status]="a.status" />
+
+        @if (showAdminActions()) {
+          <!-- Admin only (step 12). Managers never reach this block. -->
+          <div class="actions admin-actions">
+            <app-account-admin-actions [accountNumber]="a.accountNumber" [status]="a.status" (changed)="onAdminAction()" />
+          </div>
+        }
+      </div>
+
+      <mat-card appearance="outlined" class="detail-card">
+        <mat-card-content>
+          <dl class="facts">
+            <div>
+              <dt>Account number</dt>
+              <dd><span class="mono">{{ a.accountNumber }}</span><app-copy-button [value]="a.accountNumber" label="account number" /></dd>
+            </div>
+            <div><dt>Balance</dt><dd class="num">{{ a.balance | money: a.currency }}</dd></div>
+            <div><dt>Currency</dt><dd>{{ a.currency }}</dd></div>
+            <div><dt>Opened (UTC)</dt><dd>{{ a.createdAt | utcDate: 'medium' }}</dd></div>
+            <div><dt>Owner</dt><dd><app-user-ref [userId]="a.userId" [fullName]="a.userFullName" filterRoute="/manager/accounts" /></dd></div>
+            <div><dt>Owner email</dt><dd>{{ a.userEmail }}</dd></div>
+            <div>
+              <dt>Related</dt>
+              <dd>
+                <a [routerLink]="['/manager/transfers']" [queryParams]="{ accountNumber: a.accountNumber }">Transfers</a>
+                ·
+                <a [routerLink]="['/manager/conversions']" [queryParams]="{ accountNumber: a.accountNumber }">Conversions</a>
+              </dd>
+            </div>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+
+      <h2 class="section-title">Transactions</h2>
+      <form [formGroup]="form" (ngSubmit)="apply()" novalidate>
+        <app-filter-bar [canClear]="transactions.filtered()" [error]="rangeError()" (cleared)="clear()">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Type</mat-label>
+            <mat-select formControlName="type">
+              <mat-option [value]="null">Any</mat-option>
+              @for (t of types; track t) {
+                <mat-option [value]="t">{{ t === 'Credit' ? 'Credit (money in)' : 'Debit (money out)' }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>From</mat-label>
+            <input matInput type="date" formControlName="fromDate" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>To (included)</mat-label>
+            <input matInput type="date" formControlName="toDate" />
+          </mat-form-field>
+        </app-filter-bar>
+      </form>
+
+      @switch (transactions.state()) {
+        @case ('idle') {}
+        @case ('loading') {
+          <app-state-panel kind="loading" [compact]="true" message="Loading transactions…" />
+        }
+        @case ('error') {
+          <app-state-panel kind="error" [compact]="true" title="Couldn't load transactions" [message]="transactions.error()">
+            <button mat-stroked-button type="button" (click)="transactions.reload()">Try again</button>
+          </app-state-panel>
+        }
+        @default {
+          @if (!transactions.total()) {
+            <app-state-panel
+              kind="empty"
+              [compact]="true"
+              icon="receipt_long"
+              [title]="transactions.filtered() ? 'No transactions match these filters' : 'No transactions yet'"
+            />
+          } @else {
+            <div class="table-wrap">
+              <table class="data-table" style="min-width: 620px">
+                <thead>
+                  <tr>
+                    <th>Date (UTC)</th>
+                    <th>Reference</th>
+                    <th>Type</th>
+                    <th class="num">Amount</th>
+                    <th>Ledger transaction</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (t of transactions.items(); track $index) {
+                    <tr>
+                      <td class="nowrap">{{ t.createdAt | utcDate: 'medium' }}</td>
+                      <td class="mono small">{{ t.reference }}</td>
+                      <td [class.credit]="t.type === 'Credit'" [class.debit]="t.type === 'Debit'">{{ t.type }}</td>
+                      <td class="num" [class.credit]="t.type === 'Credit'" [class.debit]="t.type === 'Debit'">
+                        {{ t.type === 'Credit' ? '+' : '−' }}{{ t.amount | money: t.currency }}
+                      </td>
+                      <td class="id-link muted">#{{ t.id }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <mat-paginator
+              [length]="transactions.total()"
+              [pageIndex]="transactions.page().page - 1"
+              [pageSize]="transactions.page().size"
+              [pageSizeOptions]="pageSizes"
+              (page)="transactions.onPage($event)"
+              aria-label="Transaction pages"
+            />
+          }
+        }
+      }
+    }
+  }
+}

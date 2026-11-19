@@ -1,0 +1,171 @@
+<div class="page-header"><h1 class="page-title">Audit logs</h1></div>
+
+<form [formGroup]="form" (ngSubmit)="apply()" novalidate>
+  <app-filter-bar [canClear]="list.filtered()" [error]="rangeError()" (cleared)="clear()">
+    @if (actionsState() === 'error') {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Action starts with</mat-label>
+        <input matInput formControlName="action" maxlength="100" autocomplete="off" placeholder="e.g. account." />
+        <mat-icon
+          matSuffix
+          class="filter-info"
+          tabindex="0"
+          matTooltip="The action list could not be loaded; type the start of an action code."
+          aria-label="The action list could not be loaded; type the start of an action code."
+          >info</mat-icon
+        >
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-wide">
+        <mat-label>Action</mat-label>
+        <mat-select formControlName="action">
+          <mat-option [value]="null">Any</mat-option>
+          @if (actionChoices().extra; as extra) {
+            <mat-option [value]="extra">{{ extra }}*</mat-option>
+          }
+          <mat-optgroup label="Groups (prefix)">
+            @for (o of actionChoices().groups; track o.value) {
+              <mat-option [value]="o.value">{{ o.label }}</mat-option>
+            }
+          </mat-optgroup>
+          <mat-optgroup label="Actions">
+            @for (o of actionChoices().codes; track o.value) {
+              <mat-option [value]="o.value">{{ o.label }}</mat-option>
+            }
+          </mat-optgroup>
+        </mat-select>
+        <mat-icon
+          matSuffix
+          class="filter-info"
+          tabindex="0"
+          matTooltip="Matches every action that starts with the choice, e.g. account.* = opened, closed, frozen…"
+          aria-label="Matches every action that starts with the choice"
+          >info</mat-icon
+        >
+      </mat-form-field>
+    }
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>User ID</mat-label>
+      <input matInput formControlName="userId" maxlength="64" autocomplete="off" />
+      <mat-icon matSuffix class="filter-info" tabindex="0" matTooltip="Exact user ID" aria-label="Exact user ID">info</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Entity</mat-label>
+      <mat-select formControlName="entityName">
+        <mat-option [value]="null">Any</mat-option>
+        @for (e of entities; track e) {
+          <mat-option [value]="e">{{ e }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Entity ID</mat-label>
+      <input matInput formControlName="entityId" maxlength="100" autocomplete="off" />
+      <mat-icon
+        matSuffix
+        class="filter-info"
+        tabindex="0"
+        matTooltip="Exact value, e.g. an account number, a transfer ID or a user ID"
+        aria-label="Exact value, e.g. an account number, a transfer ID or a user ID"
+        >info</mat-icon
+      >
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>IP address</mat-label>
+      <input matInput formControlName="ipAddress" maxlength="64" autocomplete="off" />
+      <mat-icon matSuffix class="filter-info" tabindex="0" matTooltip="Exact IP address" aria-label="Exact IP address">info</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>From</mat-label>
+      <input matInput type="date" formControlName="fromDate" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>To (included)</mat-label>
+      <input matInput type="date" formControlName="toDate" />
+    </mat-form-field>
+
+    @if (list.filters().userId; as u) {
+      <app-user-filter-chip filterChips [userId]="u" (cleared)="clearUser()" />
+    }
+  </app-filter-bar>
+</form>
+
+@switch (list.state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading audit logs…" />
+  }
+  @case ('error') {
+    <app-state-panel kind="error" title="Couldn't load audit logs" [message]="list.error()">
+      <button mat-flat-button type="button" (click)="list.reload()">Try again</button>
+    </app-state-panel>
+  }
+  @default {
+    @if (!list.total()) {
+      <app-state-panel kind="empty" icon="history" [title]="list.filtered() ? 'No log entries match these filters' : 'No log entries yet'" />
+    } @else {
+      <div class="table-wrap">
+        <table class="data-table" style="min-width: 1040px">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Action</th>
+              <th>Entity</th>
+              <th>User</th>
+              <th>IP address</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of list.items(); track l.id) {
+              <tr>
+                <td class="nowrap" [title]="'UTC ' + l.createdAt">{{ l.createdAt | utcDate: 'medium' }}</td>
+                <td><code class="action">{{ l.action }}</code></td>
+                <td>
+                  <span class="entity">{{ l.entityName }}</span>
+                  @if (l.entityId) {
+                    @if (entityLink(l.entityName, l.entityId); as link) {
+                      <a class="mono small entity-id" [routerLink]="link.route" [queryParams]="link.query ?? null" [title]="l.entityId">{{ l.entityId }}</a>
+                    } @else {
+                      <span class="mono small entity-id muted" [title]="l.entityId">{{ l.entityId }}</span>
+                    }
+                  }
+                </td>
+                <td><app-user-ref [userId]="l.userId" filterRoute="/admin/audit-logs" [keepFilters]="true" /></td>
+                <td class="mono small nowrap">{{ l.ipAddress || '—' }}</td>
+                <td class="details">
+                  @if (!l.details) {
+                    <span class="muted">—</span>
+                  } @else if (!isLong(l.details) || expanded().has(l.id)) {
+                    <span class="details-text">{{ l.details }}</span>
+                    @if (isLong(l.details)) {
+                      <button mat-button type="button" class="toggle" (click)="toggle(l.id)">Show less</button>
+                    }
+                  } @else {
+                    <span class="details-text">{{ l.details.slice(0, preview) }}…</span>
+                    <button mat-button type="button" class="toggle" [attr.aria-label]="'Show all details of entry ' + l.id" (click)="toggle(l.id)">
+                      Show more
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <mat-paginator
+        [length]="list.total()"
+        [pageIndex]="list.page().page - 1"
+        [pageSize]="list.page().size"
+        [pageSizeOptions]="pageSizes"
+        (page)="list.onPage($event)"
+        aria-label="Audit log pages"
+      />
+      <p class="small muted">Times are shown in your local time zone (stored in UTC; hover a time for the UTC value).</p>
+    }
+  }
+}
