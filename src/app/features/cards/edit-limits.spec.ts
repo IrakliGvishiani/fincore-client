@@ -21,6 +21,7 @@ const CARD: VirtualCardDto = {
   status: 'Active',
   dailyLimit: 1000,
   transactionLimit: 400,
+  allowAutoConversion: false,
   createdAt: '2026-01-01T00:00:00',
 };
 

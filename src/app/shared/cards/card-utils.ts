@@ -9,11 +9,15 @@ import { amountValidator } from '../forms/validators';
 export const PAYMENT_DECLINE_MESSAGES: Record<PaymentDeclineReason, string> = {
   CardNotActive: 'The card is frozen or closed.',
   CardExpired: 'The card has expired.',
-  AccountNotActive: 'The bank account linked to this card is frozen or closed.',
+  AccountNotActive: 'The account the payment was charged from is frozen or closed.',
   TransactionLimitExceeded: "The amount is above the card's limit per payment.",
   DailyLimitExceeded: "This payment would go over the card's daily limit.",
-  InsufficientFunds: 'There is not enough money on the linked account.',
+  InsufficientFunds: 'There is not enough money on the account the payment was charged from.',
   CurrencyMismatch: "The payment currency doesn't match the currency of the card's account.",
+  AutoConversionNotAllowed:
+    "This card can only pay in its own account's currency. Turn on auto-conversion on the card to pay in other currencies.",
+  SourceAccountNotAllowed:
+    'This card can only pay from its own account. Turn on auto-conversion on the card to pay from your other accounts.',
 };
 
 /** Text for a failure reason; unknown values (newer backend) get a generic sentence, null → ''. */
@@ -69,15 +73,22 @@ export function cardUnusableReason(card: VirtualCardDto, now: Date = new Date())
   }
 }
 
-/** Which actions the card's status allows (mirrors VirtualCard.Freeze/Unfreeze/Close/SetLimits). */
+/** Which actions the card's status allows (mirrors VirtualCard.Freeze/Unfreeze/Close/SetLimits/SetAutoConversion). */
 export function cardActions(card: VirtualCardDto) {
   return {
     freeze: card.status === 'Active',
     unfreeze: card.status === 'Frozen',
     close: card.status !== 'Closed',
     editLimits: card.status !== 'Closed',
+    autoConversion: card.status !== 'Closed',
   };
 }
+
+/** Explanation shown next to every auto-conversion switch (create dialog, card page). */
+export const AUTO_CONVERSION_HELP =
+  'When on, this card can pay in any currency and the money can come from any of your active accounts, ' +
+  'converted at the National Bank of Georgia rate plus a fee. When off, it pays only from its own account and ' +
+  "only in that account's currency.";
 
 /** "1234 5678 9012 3456". */
 export function groupCardNumber(cardNumber: string): string {

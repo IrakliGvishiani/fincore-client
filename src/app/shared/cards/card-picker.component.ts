@@ -3,13 +3,11 @@ import {
   Component,
   OnInit,
   computed,
-  effect,
   inject,
   input,
   model,
   output,
   signal,
-  untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,11 +17,12 @@ import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { ApiError } from '../../core/api/api-error';
 import { CardsApi } from '../../core/api/cards.api';
-import { AccountDto, CurrencyCode, VirtualCardDto } from '../../core/models';
+import { AccountDto, VirtualCardDto } from '../../core/models';
 import { AccountsApi } from '../../features/accounts/accounts.api';
 import { MoneyPipe } from '../pipes/money.pipe';
 import { StatePanelComponent } from '../ui/state-panel.component';
 import { StatusBadgeComponent } from '../ui/status-badge.component';
+import { AutoConversionBadgeComponent } from './auto-conversion-badge.component';
 import { cardUnusableReason, displayStatus, formatExpiry, sortCards } from './card-utils';
 
 export interface PickedCard {
@@ -36,19 +35,22 @@ export interface CardOption extends PickedCard {
   disabledReason: string | null;
 }
 
-/** Builds the options: every card, unusable ones disabled with a reason. Exported for tests. */
+/**
+ * Builds the options: every card, unusable ones disabled with a reason. Exported for tests.
+ * The payment currency never disables a card: whether a card can pay in it (and from which account) is decided
+ * by the payment quote. A frozen/closed main account only blocks a card WITHOUT auto-conversion (with it on, the
+ * card can still pay from another active account).
+ */
 export function buildCardOptions(
   cards: readonly VirtualCardDto[],
   accounts: readonly AccountDto[],
-  requiredCurrency: CurrencyCode | null,
   now: Date = new Date(),
 ): CardOption[] {
   return sortCards(cards, now).map((card) => {
     const account = accounts.find((a) => a.id === card.bankAccountId) ?? null;
     let reason = cardUnusableReason(card, now);
-    if (!reason && account && account.status !== 'Active') reason = `The linked account is ${account.status.toLowerCase()}.`;
-    if (!reason && requiredCurrency && account && account.currency !== requiredCurrency) {
-      reason = `Pays in ${account.currency}; this payment is in ${requiredCurrency}.`;
+    if (!reason && !card.allowAutoConversion && account && account.status !== 'Active') {
+      reason = `The linked account is ${account.status.toLowerCase()}.`;
     }
     return { card, account, disabledReason: reason };
   });
@@ -56,14 +58,14 @@ export function buildCardOptions(
 
 /**
  * Lists my cards for choosing one to pay with (reused by the demo shop). Loads cards and accounts itself.
- * Non-usable cards are shown but disabled with a reason. `requiredCurrency` additionally disables cards whose
- * account has another currency (the backend charges the account's currency).
+ * Non-usable cards (frozen, closed, expired; inactive account without auto-conversion) are shown but disabled
+ * with a reason. Currency is not checked here: the payment quote decides that.
  *
- * `<app-card-picker [(selectedId)]="cardId" [requiredCurrency]="'GEL'" (picked)="onPick($event)" />`
+ * `<app-card-picker [(selectedId)]="cardId" (picked)="onPick($event)" />`
  */
 @Component({
   selector: 'app-card-picker',
-  imports: [FormsModule, RouterLink, MatRadioModule, MatButtonModule, MatIconModule, MoneyPipe, StatePanelComponent, StatusBadgeComponent],
+  imports: [FormsModule, RouterLink, MatRadioModule, MatButtonModule, MatIconModule, MoneyPipe, StatePanelComponent, StatusBadgeComponent, AutoConversionBadgeComponent],
   template: `
     @switch (state()) {
       @case ('loading') {
@@ -94,6 +96,9 @@ export function buildCardOptions(
                     <span class="meta mono">•••• {{ o.card.last4Digits }} · {{ expiry(o.card) }}</span>
                     @if (o.account; as a) {
                       <span class="meta">{{ a.name }} · {{ a.balance | money: a.currency }}</span>
+                    }
+                    @if (o.card.allowAutoConversion) {
+                      <app-auto-conversion-badge class="auto" />
                     }
                     @if (o.disabledReason) {
                       <span class="reason">{{ o.disabledReason }}</span>
@@ -146,6 +151,9 @@ export function buildCardOptions(
     .reason {
       color: var(--mat-sys-error);
     }
+    .auto {
+      margin-top: 4px;
+    }
     .none {
       margin: 8px 0 0;
     }
@@ -162,8 +170,6 @@ export class CardPickerComponent implements OnInit {
 
   /** Chosen card id (two-way). Reset to null if that card becomes unusable. */
   readonly selectedId = model<number | null>(null);
-  /** Only cards whose account is in this currency can be picked. */
-  readonly requiredCurrency = input<CurrencyCode | null>(null);
   readonly label = input('Choose a card');
   /** The chosen card with its account (null when nothing usable is chosen). */
   readonly picked = output<PickedCard | null>();
@@ -174,17 +180,9 @@ export class CardPickerComponent implements OnInit {
   private readonly accounts = signal<AccountDto[]>([]);
 
   protected readonly options = computed(() =>
-    buildCardOptions(this.cards(), this.accounts(), this.requiredCurrency()),
+    buildCardOptions(this.cards(), this.accounts()),
   );
   protected readonly usableCount = computed(() => this.options().filter((o) => !o.disabledReason).length);
-
-  constructor() {
-    // A different requiredCurrency can make the chosen card unusable.
-    effect(() => {
-      this.requiredCurrency();
-      if (untracked(this.state) === 'ready') untracked(() => this.reconcileSelection());
-    });
-  }
 
   ngOnInit(): void {
     this.load();

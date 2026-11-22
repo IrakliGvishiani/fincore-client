@@ -46,15 +46,40 @@ export interface ActionOption {
   label: string;
 }
 
+/** Hand-written labels where the generic one reads badly; every other code gets `humanizeAction()`. */
+const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
+  'card.auto_conversion_changed': 'Card: auto-conversion turned on/off',
+  'card.payment_completed': 'Card: payment completed',
+  'card.payment_declined': 'Card: payment declined',
+  'auth.password.reset_requested': 'Auth: password reset requested',
+  'auth.password.reset_completed': 'Auth: password reset completed',
+  'admin.role_changed': 'Admin: role changed',
+};
+
+/** "account.frozen" → "Account: frozen", "auth.login.failed" → "Auth: login failed". */
+export function humanizeAction(code: string): string {
+  const dot = code.indexOf('.');
+  if (dot < 0) return code;
+  const group = code.slice(0, dot);
+  const rest = code.slice(dot + 1).replace(/[._]+/g, ' ').trim();
+  return `${group.charAt(0).toUpperCase()}${group.slice(1)}: ${rest}`;
+}
+
+/** Readable label for an audit action code (new backend codes still get a sensible label). */
+export function auditActionLabel(code: string): string {
+  return AUDIT_ACTION_LABELS[code] ?? humanizeAction(code);
+}
+
 /**
  * Options for the action filter from GET admin/actions: one "all <group>" option per prefix (the part before
- * the first dot, e.g. "account." matches account.opened, account.frozen, …) followed by every exact code.
+ * the first dot, e.g. "account." matches account.opened, account.frozen, …) followed by every exact code with a
+ * readable label (the code itself stays visible in brackets, since that is what the log rows show).
  */
 export function actionOptions(actions: readonly string[]): { groups: ActionOption[]; codes: ActionOption[] } {
   const prefixes = [...new Set(actions.filter((a) => a.includes('.')).map((a) => a.slice(0, a.indexOf('.') + 1)))].sort();
   return {
     groups: prefixes.map((p) => ({ value: p, label: `${p}* (all ${p.slice(0, -1)} actions)` })),
-    codes: [...actions].sort().map((a) => ({ value: a, label: a })),
+    codes: [...actions].sort().map((a) => ({ value: a, label: `${auditActionLabel(a)} (${a})` })),
   };
 }
 

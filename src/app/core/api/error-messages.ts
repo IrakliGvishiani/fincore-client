@@ -32,6 +32,8 @@ export const SERVER_MESSAGES = {
   conversionIdempotencyConflict: 'Idempotency key already used for a different conversion',
   /** POST /api/payments, same key (per card) with a different payload — backend text has the typo "differenc". */
   paymentIdempotencyConflict: 'Idempotency Key already used for a differen',
+  /** POST /api/payments with expectedChargedAmount ≠ the server's charge (409, nothing stored → re-quote). */
+  paymentChargeChanged: 'The charged amount has changed',
   /** POST /api/recipient duplicate (400). A parallel duplicate hits the unique index instead → 409, no message. */
   recipientAlreadySaved: 'This Recipient is already saved',
   /** SavedRecipient.Create / UpdateName with a blank name (ArgumentException → 500 with this message). */
@@ -191,25 +193,40 @@ export function conversionErrorMessage(e: HasServerMessage): ConversionErrorInfo
 
 export const PAYMENT_MESSAGES = {
   mayHaveGoneThrough:
-    "The payment may already have gone through. Check the card's payments before trying again.",
-  idempotencyConflict:
-    'This request ID was already used for a different payment. Check the payment list, then start a new payment.',
+    "The payment may already have gone through. Check your payments history before trying again.",
+  idempotencyConflict: 'This payment request could not be processed. Please review it and confirm again.',
+  chargeChanged:
+    'The amount to be charged has changed since the price was checked. Nothing was charged. Please review the new amount and confirm again.',
+  ratesUnavailable: 'Exchange rates are temporarily unavailable. Please try again later.',
 } as const;
 
 /**
- * Text for a failed payment request (an HTTP error — declines are 200 responses and never get here).
- * Unclear outcomes (409, network error, 5xx without a meaningful message) add `checkHistory`.
+ * What kind of failed payment request (an HTTP error — declines are 200 responses and never get here):
+ * - `chargeChanged`: 409 rate protection; nothing stored → re-quote and ask for a new confirmation.
+ * - `idempotencyConflict`: 409, the key was used for a different payment → use a NEW key.
+ * - `ratesUnavailable`: 503 → nothing stored, try later (same key is fine).
+ * - `unclear`: network error, other 409 or any other 5xx (500s carry only a generic text) → may have gone
+ *   through: check the history (keep the key, a retry with it is safe).
+ * - `other`: 400/404… with the server message.
+ * Both 409s arrive as 409; they are told apart by the START of the message, here and nowhere else.
  */
-export function paymentErrorMessage(e: HasServerMessage): { message: string; checkHistory: boolean } {
+export type PaymentErrorKind = 'chargeChanged' | 'idempotencyConflict' | 'ratesUnavailable' | 'unclear' | 'other';
+
+export function paymentErrorMessage(e: HasServerMessage): { kind: PaymentErrorKind; message: string; checkHistory: boolean } {
+  if (e.status === 409 && matchesServerMessage(e.serverMessage, 'paymentChargeChanged')) {
+    return { kind: 'chargeChanged', message: PAYMENT_MESSAGES.chargeChanged, checkHistory: false };
+  }
   if (matchesServerMessage(e.serverMessage, 'paymentIdempotencyConflict')) {
-    return { message: PAYMENT_MESSAGES.idempotencyConflict, checkHistory: true };
+    return { kind: 'idempotencyConflict', message: PAYMENT_MESSAGES.idempotencyConflict, checkHistory: false };
   }
-  const unclear = !e.serverMessage || isTechnicalMessage(e.serverMessage);
-  if (e.status === 409 || e.status === 0 || (e.status >= 500 && unclear)) {
-    const base = e.status === 409 && unclear ? 'The payment could not be confirmed.' : e.message;
-    return { message: `${base} ${PAYMENT_MESSAGES.mayHaveGoneThrough}`, checkHistory: true };
+  if (e.status === 503) {
+    return { kind: 'ratesUnavailable', message: PAYMENT_MESSAGES.ratesUnavailable, checkHistory: false };
   }
-  return { message: e.message, checkHistory: false };
+  if (e.status === 0 || e.status === 409 || e.status >= 500) {
+    const base = e.status === 0 ? 'The connection to the server was lost.' : 'The payment could not be confirmed.';
+    return { kind: 'unclear', message: `${base} ${PAYMENT_MESSAGES.mayHaveGoneThrough}`, checkHistory: true };
+  }
+  return { kind: 'other', message: e.message, checkHistory: false };
 }
 
 export const RECIPIENT_MESSAGES = {

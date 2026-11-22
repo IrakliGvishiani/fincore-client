@@ -86,24 +86,5 @@ export function buildConvertRequest(state: QuoteState): ConvertRequest {
   return { ...state.request, expectedRate: state.quote.rate };
 }
 
-/** "1 USD = 2.7134 GEL" (rate = units of the target currency per 1 unit of the source). */
-export function formatRate(quote: Pick<ConversionQuoteDto, 'rate' | 'fromCurrency' | 'toCurrency'>): string {
-  const rate = quote.rate.toLocaleString('en-US', { maximumFractionDigits: 8 });
-  return `1 ${quote.fromCurrency} = ${rate} ${quote.toCurrency}`;
-}
-
-/** 0.005 → "0.5%". */
-export function formatFeeRate(feeRate: number): string {
-  return `${(feeRate * 100).toLocaleString('en-US', { maximumFractionDigits: 4 })}%`;
-}
-
-/**
- * NBG rate date ("2026-11-15T00:00:00"): an official calendar day, so only the date part is used
- * (no UTC → local shift). Returns e.g. "Nov 15, 2026"; the raw value if it can't be parsed.
- */
-export function formatRateDate(value: string | null | undefined): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '');
-  if (!m) return value ?? '';
-  const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
+// Rate/fee/date formatting moved to shared/fx (also used by card payments); re-exported for existing imports.
+export { formatFeeRate, formatRate, formatRateDate } from '../../../shared/fx/fx-format';

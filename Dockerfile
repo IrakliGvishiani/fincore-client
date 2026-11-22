@@ -16,7 +16,7 @@ COPY . .
 RUN npx ng build --configuration production
 
 # ---- Stage 2: serve with nginx (non-root) ------------------------------------------------------------------
-FROM nginx:1.27-alpine
+FROM nginx:1.30-alpine
 
 # Our own main config (non-root friendly: pid and temp files in /tmp) + site config.
 COPY nginx/nginx.conf /etc/nginx/nginx.conf

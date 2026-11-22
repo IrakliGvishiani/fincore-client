@@ -32,6 +32,12 @@
         <dt>Reference</dt>
         <dd class="shop-mono ref">{{ p.reference }}</dd>
       </div>
+      @if (p.isConversion && p.chargedAmount !== null) {
+        <div class="wide">
+          <dt>{{ p.status === 'Completed' ? 'Charged' : 'Not charged' }}</dt>
+          <dd class="charge"><app-payment-charge [payment]="p" [accounts]="accountRefs()" /></dd>
+        </div>
+      }
     </dl>
 
     <div class="result-actions">
@@ -42,7 +48,8 @@
         <a routerLink="/demo-shop" class="shop-btn shop-btn-primary">Continue shopping</a>
       } @else if (p.status === 'Failed') {
         <a routerLink="/demo-shop/cart" class="shop-btn">Back to cart</a>
-        <button type="button" class="shop-btn shop-btn-primary" (click)="tryAnotherCard()">Try another card</button>
+        <button type="button" class="shop-btn" (click)="tryAnotherCard()">Try another card</button>
+        <button type="button" class="shop-btn shop-btn-primary" (click)="tryAgainSameCard()">Try again with the same card</button>
       } @else {
         <a routerLink="/payments" class="shop-btn">FinCore payments</a>
       }
@@ -68,7 +75,7 @@
       <app-cart-lines />
       <div class="shop-total-row total">
         <span>Total</span>
-        <span>{{ cart.total() | money: currency }}</span>
+        <span>{{ cart.total() | money: cart.currency() }}</span>
       </div>
     </section>
 
@@ -77,26 +84,108 @@
         <mat-icon aria-hidden="true">credit_card</mat-icon>
         <div>
           <h2 id="fincore-pay-title">Pay with FinCore card</h2>
-          <p>Choose a card. Only cards on GEL accounts can pay in this store.</p>
+          <p>Choose a card, then the account to pay from. Prices are in {{ cart.currency() }}.</p>
         </div>
       </div>
 
-      <app-card-picker
-        [(selectedId)]="cardId"
-        [requiredCurrency]="currency"
-        label="Card to pay with"
-        (picked)="picked.set($event)"
-      />
+      <app-card-picker [(selectedId)]="cardId" label="Card to pay with" (picked)="onPicked($event)" />
 
       @if (amountError(); as e) {
         <p class="pay-error" role="alert">{{ e }}</p>
       }
 
+      @if (picked()) {
+        <div class="pay-from" aria-live="polite">
+          @switch (quoteState().status) {
+            @case ('loading') {
+              <p class="quote-loading"><mat-spinner diameter="18" /> Checking the price…</p>
+            }
+            @case ('error') {
+              <div class="quote-error" role="alert">
+                <span>{{ $any(quoteState()).message }}</span>
+                <button type="button" class="link-button" (click)="retryQuote()">Try again</button>
+              </div>
+            }
+            @case ('ready') {
+              @if (block(); as b) {
+                <div class="blocked" role="alert">
+                  <mat-icon aria-hidden="true">block</mat-icon>
+                  <div>
+                    <p>{{ b.message }}</p>
+                    @if (b.kind === 'autoConversion' && picked(); as pc) {
+                      <a [routerLink]="['/cards', pc.card.id]">Open the card's settings</a>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (chargeNoticeView(); as n) {
+                <div class="notice" role="status">
+                  <mat-icon aria-hidden="true">info</mat-icon>
+                  <p>
+                    The amount to be charged changed after the price was checked. Nothing was charged.
+                    @if (n.current !== null && !n.same) {
+                      It was {{ n.previous | money: n.currency }} and is now <strong>{{ n.current | money: n.currency }}</strong>.
+                    }
+                    Please review and confirm again.
+                  </p>
+                </div>
+              }
+
+              @if (options().length) {
+                <h3 id="pay-from-title" class="pay-from-title">Pay from</h3>
+                <mat-radio-group
+                  class="source-list"
+                  aria-labelledby="pay-from-title"
+                  [value]="selectedSourceId()"
+                  (change)="selectSource($event.value)"
+                >
+                  @for (o of options(); track o.account.accountId) {
+                    <mat-radio-button class="source" [value]="o.account.accountId" [disabled]="!!o.disabledReason">
+                      <span class="source-row">
+                        <span class="source-main">
+                          <span class="source-name">
+                            {{ o.account.accountName }}
+                            <span class="mono">•••• {{ o.account.accountNumber.slice(-4) }}</span>
+                            @if (o.account.isMainAccount) {
+                              <span class="tag">Card's account</span>
+                            }
+                          </span>
+                          @if (o.account.isConversion) {
+                            <span class="source-meta">
+                              {{ rateText(o.account) }}@if (rateDate(o.account.rateDate)) { · {{ rateDate(o.account.rateDate) }}}
+                              · fee {{ o.account.feeAmount | money: o.account.currency }} ({{ feeRate(o.account.feeRate) }})
+                            </span>
+                          } @else {
+                            <span class="source-meta">No conversion</span>
+                          }
+                          @if (o.disabledReason) {
+                            <span class="source-reason">{{ o.disabledReason }}</span>
+                          }
+                        </span>
+                        <span class="source-amount">{{ o.account.chargedAmount | money: o.account.currency }}</span>
+                      </span>
+                    </mat-radio-button>
+                  }
+                </mat-radio-group>
+              }
+
+              @for (w of warnings(); track w) {
+                <p class="warning" role="status"><mat-icon aria-hidden="true">warning</mat-icon>{{ w }}</p>
+              }
+            }
+          }
+        </div>
+      }
+
       <button type="button" class="shop-btn shop-btn-primary shop-btn-block pay" [disabled]="!canPay()" (click)="pay()">
-        Pay {{ cart.total() | money: currency }}
+        Pay {{ cart.total() | money: cart.currency() }}
       </button>
       @if (!picked()) {
         <p class="pay-hint">Choose a card to continue.</p>
+      }
+      @if (picked() && selectedOption(); as s) {
+        <p class="pay-hint">{{ s.account.chargedAmount | money: s.account.currency }} will be charged from {{ s.account.accountName }}.</p>
       }
     </section>
   </div>

@@ -11,6 +11,7 @@ import { CardsApi } from '../../core/api/cards.api';
 import { AccountDto, VirtualCardDto } from '../../core/models';
 import { ToastService } from '../../core/notify/toast.service';
 import { CardVisualComponent } from '../../shared/cards/card-visual.component';
+import { AutoConversionBadgeComponent } from '../../shared/cards/auto-conversion-badge.component';
 import { sortCards } from '../../shared/cards/card-utils';
 import { formatMoney } from '../../shared/pipes/money.pipe';
 import { StatePanelComponent } from '../../shared/ui/state-panel.component';
@@ -29,6 +30,7 @@ type LoadState = 'loading' | 'ready' | 'error';
     MatIconModule,
     MatTooltipModule,
     CardVisualComponent,
+    AutoConversionBadgeComponent,
     StatePanelComponent,
   ],
   template: `
@@ -83,6 +85,9 @@ type LoadState = 'loading' | 'ready' | 'error';
                   <span>Per payment {{ limit(c.transactionLimit, a) }}</span>
                   @if (a) {
                     <span class="account">{{ a.name }} · {{ a.currency }}</span>
+                  }
+                  @if (c.allowAutoConversion) {
+                    <app-auto-conversion-badge />
                   }
                 </div>
               </a>

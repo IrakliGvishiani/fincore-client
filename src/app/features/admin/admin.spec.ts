@@ -12,7 +12,7 @@ import { createRegistrationForm, registrationPayload } from '../../shared/forms/
 import { ManagerAccountsPageComponent } from '../manager/accounts/manager-accounts-page.component';
 import { ManagerApi } from '../manager/manager.api';
 import { AdminApi } from './admin.api';
-import { accountAdminActions, actionOptions, auditEntityLink, banActions } from './admin-utils';
+import { accountAdminActions, actionOptions, auditActionLabel, auditEntityLink, banActions } from './admin-utils';
 import { AdminUserDetailPageComponent } from './users/admin-user-detail-page.component';
 
 describe('admin role guards (Admin vs Manager vs Customer)', () => {
@@ -79,6 +79,21 @@ describe('admin action rules', () => {
     const { groups, codes } = actionOptions(['auth.login.failed', 'account.frozen', 'auth.registered', 'account.opened']);
     expect(groups.map((g) => g.value)).toEqual(['account.', 'auth.']);
     expect(codes.map((c) => c.value)).toEqual(['account.frozen', 'account.opened', 'auth.login.failed', 'auth.registered']);
+    expect(codes.map((c) => c.label)).toEqual([
+      'Account: frozen (account.frozen)',
+      'Account: opened (account.opened)',
+      'Auth: login failed (auth.login.failed)',
+      'Auth: registered (auth.registered)',
+    ]);
+  });
+
+  it('gives the new card.auto_conversion_changed action a readable label in the filter', () => {
+    const { groups, codes } = actionOptions(['card.payment_completed', 'card.auto_conversion_changed']);
+    expect(groups.map((g) => g.label)).toEqual(['card.* (all card actions)']);
+    expect(codes.find((c) => c.value === 'card.auto_conversion_changed')!.label).toBe(
+      'Card: auto-conversion turned on/off (card.auto_conversion_changed)',
+    );
+    expect(auditActionLabel('ledger.something_new')).toBe('Ledger: something new'); // future codes still read well
   });
 
   it('links audit entities only where a staff screen exists', () => {

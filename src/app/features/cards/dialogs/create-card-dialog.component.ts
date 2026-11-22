@@ -8,17 +8,19 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Observable, finalize } from 'rxjs';
 import { ApiError } from '../../../core/api/api-error';
 import { CARD_LIMITS, CardsApi } from '../../../core/api/cards.api';
 import { AccountDto, VirtualCardCreatedDto } from '../../../core/models';
-import { createLimitsGroup, formatExpiry, groupCardNumber } from '../../../shared/cards/card-utils';
+import { AUTO_CONVERSION_HELP, createLimitsGroup, formatExpiry, groupCardNumber } from '../../../shared/cards/card-utils';
 import { fieldError } from '../../../shared/forms/field-error';
 import { applyServerErrors } from '../../../shared/forms/server-errors';
 import { notBlank, trimmed } from '../../../shared/forms/validators';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { CopyButtonComponent } from '../../../shared/ui/copy-button.component';
 import { FormAlertComponent } from '../../../shared/ui/form-alert.component';
+import { confirmEnableAutoConversion } from '../auto-conversion-confirm';
 import { LimitFieldsComponent, readLimits } from './limit-fields.component';
 
 export interface CreateCardDialogData {
@@ -48,6 +50,7 @@ export interface CreatedCardSummary {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatSlideToggleModule,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -115,6 +118,17 @@ export interface CreatedCardSummary {
           </mat-form-field>
 
           <app-limit-fields [group]="form.controls.limits" [currency]="currency()" />
+
+          <div class="auto-conversion">
+            <mat-slide-toggle
+              [checked]="form.controls.allowAutoConversion.value"
+              (change)="toggleAutoConversion($event)"
+              aria-describedby="create-auto-conversion-help"
+            >
+              Allow paying from my other accounts with automatic conversion
+            </mat-slide-toggle>
+            <p id="create-auto-conversion-help" class="help">{{ autoHelp }}</p>
+          </div>
         </mat-dialog-content>
 
         <mat-dialog-actions align="end">
@@ -130,6 +144,14 @@ export interface CreatedCardSummary {
     }
   `,
   styles: `
+    .auto-conversion {
+      margin-top: 8px;
+    }
+    .help {
+      margin: 6px 0 0;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
     .reveal {
       display: flex;
       flex-direction: column;
@@ -194,7 +216,12 @@ export class CreateCardDialogComponent implements OnDestroy {
       Validators.required,
     ),
     limits: createLimitsGroup(),
+    /** Off by default; turning it on is confirmed (see confirmEnableAutoConversion). */
+    allowAutoConversion: new FormControl(false, { nonNullable: true }),
   });
+
+  protected readonly autoHelp = AUTO_CONVERSION_HELP;
+  private readonly dialog = inject(MatDialog);
 
   private readonly accountId = toSignal(this.form.controls.bankAccountId.valueChanges, {
     initialValue: this.form.controls.bankAccountId.value,
@@ -218,7 +245,12 @@ export class CreateCardDialogComponent implements OnDestroy {
     this.dialogRef.disableClose = true;
     this.cardsApi
       .create(
-        { bankAccountId: v.bankAccountId!, name: trimmed(v.name), ...readLimits(this.form.controls.limits) },
+        {
+          bankAccountId: v.bankAccountId!,
+          name: trimmed(v.name),
+          ...readLimits(this.form.controls.limits),
+          allowAutoConversion: v.allowAutoConversion,
+        },
         { silent: true },
       )
       .pipe(finalize(() => this.saving.set(false)))
@@ -232,6 +264,20 @@ export class CreateCardDialogComponent implements OnDestroy {
           if (!applyServerErrors(this.form, e)) this.error.set(e.message);
         },
       });
+  }
+
+  /** Turning it on asks first (the card could then spend from all active accounts); off needs no confirmation. */
+  protected toggleAutoConversion(event: MatSlideToggleChange): void {
+    const control = this.form.controls.allowAutoConversion;
+    if (!event.checked) {
+      control.setValue(false);
+      return;
+    }
+    event.source.checked = false; // stays off unless confirmed
+    confirmEnableAutoConversion(this.dialog).subscribe((ok) => {
+      control.setValue(ok);
+      event.source.checked = ok;
+    });
   }
 
   protected done(): void {

@@ -3,6 +3,7 @@ import { EMPTY, Observable, expand, map, reduce } from 'rxjs';
 import {
   CreateVirtualCardRequest,
   Paged,
+  SetAutoConversionRequest,
   SetCardLimitsRequest,
   VirtualCardCreatedDto,
   VirtualCardDto,
@@ -63,6 +64,15 @@ export class CardsApi {
   /** 204. Not allowed on Closed cards. */
   setLimits(id: number, body: SetCardLimitsRequest, options: RequestOptions = {}): Observable<void> {
     return this.api.patch<void>(`card/${id}/limits`, body, options);
+  }
+
+  /**
+   * PATCH card/{id}/auto-conversion `{enabled}` → **200 with the updated card** (not 204). Closed cards → 400
+   * "Closed cards cannot be changed.". Audited as `card.auto_conversion_changed`.
+   */
+  setAutoConversion(id: number, enabled: boolean, options: RequestOptions = {}): Observable<VirtualCardDto> {
+    const body: SetAutoConversionRequest = { enabled };
+    return this.api.patch<VirtualCardDto>(`card/${id}/auto-conversion`, body, options);
   }
 
   /** 204. Active → Frozen only. */

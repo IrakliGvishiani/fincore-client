@@ -22,7 +22,12 @@
 
   @default {
     @if (card(); as c) {
-      <h1 class="page-title">{{ c.name }}</h1>
+      <div class="title-row">
+        <h1 class="page-title">{{ c.name }}</h1>
+        @if (c.allowAutoConversion) {
+          <app-auto-conversion-badge />
+        }
+      </div>
 
       <mat-card appearance="outlined" class="summary">
         <mat-card-content>
@@ -72,6 +77,23 @@
                   This card is closed. Its payment history stays available below.
                 </p>
               }
+
+              <section class="auto-conversion" aria-labelledby="auto-conversion-label">
+                <mat-slide-toggle
+                  [checked]="c.allowAutoConversion"
+                  [disabled]="!actions().autoConversion || autoBusy()"
+                  (change)="toggleAutoConversion($event)"
+                  aria-describedby="auto-conversion-help"
+                >
+                  <span id="auto-conversion-label">Allow paying from my other accounts with automatic conversion</span>
+                </mat-slide-toggle>
+                <p id="auto-conversion-help" class="sub help">
+                  {{ autoHelp }}
+                  @if (!actions().autoConversion) {
+                    <br />Closed cards cannot be changed.
+                  }
+                </p>
+              </section>
 
               <div class="actions">
                 @if (actions().freeze) {

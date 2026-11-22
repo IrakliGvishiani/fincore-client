@@ -24,6 +24,7 @@ const card = (id: number, status: VirtualCardDto['status'], extra: Partial<Virtu
   status,
   dailyLimit: 1000,
   transactionLimit: 400,
+  allowAutoConversion: false,
   createdAt: `2026-01-0${id}T00:00:00`,
   ...extra,
 });
@@ -69,6 +70,8 @@ describe('payment failure reasons', () => {
     'DailyLimitExceeded',
     'InsufficientFunds',
     'CurrencyMismatch',
+    'AutoConversionNotAllowed',
+    'SourceAccountNotAllowed',
   ];
 
   it('has a friendly sentence for every backend enum value', () => {
@@ -84,11 +87,31 @@ describe('payment failure reasons', () => {
     expect(declineMessage(null)).toBe('');
   });
 
-  it('maps payment HTTP errors (not declines)', () => {
+  it('maps payment HTTP errors (not declines), telling the two 409s apart by the message start', () => {
     const err = (status: number, serverMessage: string | null) => ({ status, serverMessage, message: serverMessage ?? 'x' });
-    expect(paymentErrorMessage(err(409, 'Idempotency Key already used for a differenc payment')).checkHistory).toBeTrue();
-    expect(paymentErrorMessage(err(0, null)).checkHistory).toBeTrue();
+    const changed = paymentErrorMessage(
+      err(409, 'The charged amount has changed: it is now 271.37 GEL (expected 270.00). Please request a new quote.'),
+    );
+    expect(changed.kind).toBe('chargeChanged');
+    expect(changed.checkHistory).toBeFalse(); // nothing was stored
+
+    const conflict = paymentErrorMessage(err(409, 'Idempotency Key already used for a differenc payment'));
+    expect(conflict.kind).toBe('idempotencyConflict');
+    expect(conflict.message).not.toContain('Idempotency'); // generic text, not the server's
+
+    expect(paymentErrorMessage(err(503, 'Exchange rates are temporarily unavailable.'))).toEqual({
+      kind: 'ratesUnavailable',
+      message: 'Exchange rates are temporarily unavailable. Please try again later.',
+      checkHistory: false,
+    });
+    for (const unclear of [err(0, null), err(500, 'An unexpected error occurred.'), err(409, null)]) {
+      const m = paymentErrorMessage(unclear);
+      expect(m.kind).toBe('unclear');
+      expect(m.checkHistory).toBeTrue();
+      expect(m.message).toContain('may already have gone through');
+    }
     expect(paymentErrorMessage(err(404, 'Virtual card not found'))).toEqual({
+      kind: 'other',
       message: 'Virtual card not found',
       checkHistory: false,
     });
@@ -116,25 +139,29 @@ describe('card status helpers', () => {
   });
 
   it('allows actions by status', () => {
-    expect(cardActions(card(1, 'Active'))).toEqual({ freeze: true, unfreeze: false, close: true, editLimits: true });
-    expect(cardActions(card(1, 'Frozen'))).toEqual({ freeze: false, unfreeze: true, close: true, editLimits: true });
-    expect(cardActions(card(1, 'Closed'))).toEqual({ freeze: false, unfreeze: false, close: false, editLimits: false });
+    expect(cardActions(card(1, 'Active'))).toEqual({ freeze: true, unfreeze: false, close: true, editLimits: true, autoConversion: true });
+    expect(cardActions(card(1, 'Frozen'))).toEqual({ freeze: false, unfreeze: true, close: true, editLimits: true, autoConversion: true });
+    expect(cardActions(card(1, 'Closed'))).toEqual({ freeze: false, unfreeze: false, close: false, editLimits: false, autoConversion: false });
   });
 });
 
 describe('card picker options', () => {
-  it('disables unusable cards with a reason', () => {
+  it('disables cards that cannot pay at all, never because of the currency', () => {
     const cards = [
       card(1, 'Active'),
       card(2, 'Frozen'),
-      card(3, 'Active', { bankAccountId: 2 }),
-      card(4, 'Active', { bankAccountId: 3 }),
+      card(3, 'Active', { bankAccountId: 2 }), // USD account: still selectable, the quote decides
+      card(4, 'Active', { bankAccountId: 3 }), // frozen main account, auto-conversion off
+      card(5, 'Active', { bankAccountId: 3, allowAutoConversion: true }), // frozen main account, auto-conversion on
+      card(6, 'Active', { expiryMonth: 10, expiryYear: 2026 }),
     ];
-    const options = buildCardOptions(cards, [account(1, 'GEL'), account(2, 'USD'), account(3, 'GEL', 'Frozen')], 'GEL', NOW);
+    const options = buildCardOptions(cards, [account(1, 'GEL'), account(2, 'USD'), account(3, 'GEL', 'Frozen')], NOW);
     const reason = (id: number) => options.find((o) => o.card.id === id)!.disabledReason;
     expect(reason(1)).toBeNull();
     expect(reason(2)).toContain('Frozen');
-    expect(reason(3)).toContain('USD');
+    expect(reason(3)).toBeNull();
     expect(reason(4)).toContain('frozen');
+    expect(reason(5)).toBeNull(); // can still pay from another active account
+    expect(reason(6)).toContain('Expired');
   });
 });
