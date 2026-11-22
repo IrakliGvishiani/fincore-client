@@ -10,6 +10,8 @@ export interface AccountRef {
 
 /** What to show under a payment's (merchant) amount when it was converted. */
 export interface PaymentChargeView {
+  /** False for a declined payment that was priced but not charged ("Would have been charged …"). */
+  charged: boolean;
   chargedAmount: number;
   chargedCurrency: CurrencyCode;
   /** "Main GEL •••• 1234", or "account #12" when the account is not in the list. */
@@ -35,12 +37,13 @@ export function accountLabel(id: number | null | undefined, accounts: readonly A
  * pricing (null fields) give null, so callers just show the merchant amount.
  */
 export function paymentChargeView(
-  p: Partial<Pick<PaymentDto, 'isConversion' | 'chargedAmount' | 'chargedCurrency' | 'exchangeRate' | 'feeAmount' | 'rateDate' | 'sourceBankAccountId' | 'currency'>>,
+  p: Partial<Pick<PaymentDto, 'isConversion' | 'chargedAmount' | 'chargedCurrency' | 'exchangeRate' | 'feeAmount' | 'rateDate' | 'sourceBankAccountId' | 'currency' | 'status'>>,
   accounts: readonly AccountRef[] = [],
 ): PaymentChargeView | null {
   if (!p.isConversion || p.chargedAmount === null || p.chargedAmount === undefined || !p.chargedCurrency) return null;
   const rate = p.exchangeRate;
   return {
+    charged: p.status === undefined || p.status === 'Completed',
     chargedAmount: Number(p.chargedAmount),
     chargedCurrency: p.chargedCurrency,
     accountLabel: accountLabel(p.sourceBankAccountId, accounts),

@@ -6,12 +6,15 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
-import { Subscription, finalize } from 'rxjs';
+import { Subscription, catchError, finalize, of } from 'rxjs';
 import { ApiError } from '../../core/api/api-error';
 import { PAYMENT_LIMITS, PaymentsApi } from '../../core/api/payments.api';
 import { PaymentDto } from '../../core/models';
 import { ToastService } from '../../core/notify/toast.service';
 import { declineMessage } from '../../shared/cards/card-utils';
+import { AccountRef } from '../../shared/cards/payment-charge';
+import { PaymentChargeComponent } from '../../shared/cards/payment-charge.component';
+import { AccountsApi } from '../accounts/accounts.api';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { UtcDatePipe } from '../../shared/pipes/utc-date.pipe';
 import { StatePanelComponent } from '../../shared/ui/state-panel.component';
@@ -21,7 +24,9 @@ type LoadState = 'loading' | 'ready' | 'error';
 
 /**
  * Paginated payments table: all my payments, or one card's (`cardId`). Failed payments are listed with their
- * reason. Each row can download its receipt. Call `reload()` after a new payment.
+ * reason. The amount is the shop (merchant) amount; converted payments add "Charged X from <account>", the rate
+ * with its date and the fee (`PaymentChargeComponent`, null-safe for old payments and early declines). Each row
+ * can download its receipt. Call `reload()` after a new payment.
  */
 @Component({
   selector: 'app-payment-history',
@@ -37,6 +42,7 @@ type LoadState = 'loading' | 'ready' | 'error';
     UtcDatePipe,
     StatePanelComponent,
     StatusBadgeComponent,
+    PaymentChargeComponent,
   ],
   template: `
     @switch (state()) {
@@ -103,8 +109,11 @@ type LoadState = 'loading' | 'ready' | 'error';
 
               <ng-container matColumnDef="amount">
                 <th mat-header-cell *matHeaderCellDef class="num">Amount</th>
-                <td mat-cell *matCellDef="let p" class="num amount" [class.failed]="p.status === 'Failed'">
-                  {{ p.status === 'Completed' ? '−' : '' }}{{ p.amount | money: p.currency }}
+                <td mat-cell *matCellDef="let p" class="num">
+                  <div class="amount" [class.failed]="p.status === 'Failed'">
+                    {{ p.status === 'Completed' ? '−' : '' }}{{ p.amount | money: p.currency }}
+                  </div>
+                  <div class="charge"><app-payment-charge [payment]="p" [accounts]="accounts()" /></div>
                 </td>
               </ng-container>
 
@@ -153,7 +162,7 @@ type LoadState = 'loading' | 'ready' | 'error';
     }
     .payments-table {
       width: 100%;
-      min-width: 880px;
+      min-width: 960px;
     }
     .nowrap {
       white-space: nowrap;
@@ -191,6 +200,14 @@ type LoadState = 'loading' | 'ready' | 'error';
       font-variant-numeric: tabular-nums;
       font-weight: 500;
     }
+    .charge {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 2px;
+      max-width: 260px;
+      margin-left: auto;
+      text-align: right;
+    }
     .amount.failed {
       color: var(--mat-sys-on-surface-variant);
       text-decoration: line-through;
@@ -212,6 +229,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 export class PaymentHistoryComponent implements OnInit {
   private readonly paymentsApi = inject(PaymentsApi);
   private readonly toast = inject(ToastService);
+  private readonly accountsApi = inject(AccountsApi);
 
   /** One card's payments; null = all my payments. */
   readonly cardId = input<number | null>(null);
@@ -233,6 +251,8 @@ export class PaymentHistoryComponent implements OnInit {
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = signal<number>(PAYMENT_LIMITS.historyPageSize);
   protected readonly downloadingId = signal<number | null>(null);
+  /** My accounts, to name the account a converted payment was charged from (optional: ids are shown otherwise). */
+  protected readonly accounts = signal<AccountRef[]>([]);
 
   private sub?: Subscription;
 
@@ -242,6 +262,10 @@ export class PaymentHistoryComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.accountsApi
+      .list({ silent: true })
+      .pipe(catchError(() => of([])))
+      .subscribe((list) => this.accounts.set(list.map((a) => ({ id: a.id, name: a.name, accountNumber: a.accountNumber }))));
   }
 
   /** Back to the first page (newest) and reload. */

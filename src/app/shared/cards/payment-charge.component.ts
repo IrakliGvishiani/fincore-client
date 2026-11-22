@@ -15,7 +15,8 @@ import { AccountRef, paymentChargeView } from './payment-charge';
     @if (view(); as v) {
       <span class="charge">
         <span class="line">
-          Charged <strong>{{ v.chargedAmount | money: v.chargedCurrency }}</strong> from {{ v.accountLabel }}
+          {{ v.charged ? 'Charged' : 'Would have been charged' }}
+          <strong>{{ v.chargedAmount | money: v.chargedCurrency }}</strong> from {{ v.accountLabel }}
         </span>
         @if (v.rateText) {
           <span class="line muted">{{ v.rateText }}@if (v.rateDate) { ({{ v.rateDate }})}</span>

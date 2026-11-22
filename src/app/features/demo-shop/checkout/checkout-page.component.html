@@ -34,7 +34,7 @@
       </div>
       @if (p.isConversion && p.chargedAmount !== null) {
         <div class="wide">
-          <dt>Charged</dt>
+          <dt>{{ p.status === 'Completed' ? 'Charged' : 'Not charged' }}</dt>
           <dd class="charge"><app-payment-charge [payment]="p" [accounts]="accountRefs()" /></dd>
         </div>
       }
