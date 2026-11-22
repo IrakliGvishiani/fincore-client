@@ -33,6 +33,7 @@ describe('CreateCardDialogComponent one-time reveal', () => {
       expiryYear: 2029,
       dailyLimit: 1000,
       transactionLimit: 400,
+      allowAutoConversion: false,
     };
     const ref = dialogRefMock();
     TestBed.configureTestingModule({

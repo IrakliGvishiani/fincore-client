@@ -126,6 +126,7 @@ describe('PayReviewDialogComponent idempotency key', () => {
     status: 'Active',
     dailyLimit: 1000,
     transactionLimit: 400,
+    allowAutoConversion: false,
     createdAt: '2026-01-01T00:00:00',
   };
   const payment = { virtualCardId: 7, merchant: 'Demo Shop', amount: 37, description: 'Order: 2× Coffee beans' };
@@ -141,6 +142,14 @@ describe('PayReviewDialogComponent idempotency key', () => {
     reference: 'PAY-1',
     last4Digits: '2345',
     createdAt: '2026-11-16T10:00:00',
+    sourceBankAccountId: 5,
+    chargedCurrency: 'GEL',
+    chargedAmount: 37,
+    exchangeRate: 1,
+    feeAmount: 0,
+    limitAmount: 37,
+    rateDate: null,
+    isConversion: false,
   };
 
   let responses: Array<() => Observable<PaymentDto>>;

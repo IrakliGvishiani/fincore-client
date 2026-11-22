@@ -32,7 +32,12 @@ export type PaymentDeclineReason =
   | 'TransactionLimitExceeded'
   | 'DailyLimitExceeded'
   | 'InsufficientFunds'
-  | 'CurrencyMismatch';
+  /** Legacy: no longer produced by the backend. */
+  | 'CurrencyMismatch'
+  /** Merchant currency differs from the card's main-account currency and auto-conversion is off. */
+  | 'AutoConversionNotAllowed'
+  /** Another source account than the card's main account was requested and auto-conversion is off. */
+  | 'SourceAccountNotAllowed';
 
 export type SuspiciousActivityStatus = 'Detected' | 'UnderReview' | 'Resolved';
 export const SUSPICIOUS_ACTIVITY_STATUSES: readonly SuspiciousActivityStatus[] = [
