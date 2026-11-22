@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { RouterLink } from '@angular/router';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { CART_MAX_QUANTITY, CartService } from '../cart/cart.service';
-import { PRODUCTS, Product, SHOP_CURRENCY } from '../products';
+import { PRODUCTS, Product, priceOf } from '../products';
 
 /** /demo-shop — the product grid. */
 @Component({
@@ -10,7 +10,7 @@ import { PRODUCTS, Product, SHOP_CURRENCY } from '../products';
   imports: [RouterLink, MoneyPipe],
   template: `
     <h1 class="shop-title">Everyday things, simply priced</h1>
-    <p class="shop-lead">All prices in GEL. Pay at checkout with your FinCore virtual card.</p>
+    <p class="shop-lead">Prices in {{ cart.currency() }} (change it at the top). Pay at checkout with your FinCore virtual card.</p>
 
     <ul class="products">
       @for (p of products; track p.id) {
@@ -21,7 +21,7 @@ import { PRODUCTS, Product, SHOP_CURRENCY } from '../products';
             <p class="product-desc">{{ p.description }}</p>
           </div>
           <div class="product-foot">
-            <span class="shop-price product-price">{{ p.price | money: currency }}</span>
+            <span class="shop-price product-price">{{ price(p) | money: cart.currency() }}</span>
             <button
               type="button"
               class="shop-btn"
@@ -97,9 +97,8 @@ import { PRODUCTS, Product, SHOP_CURRENCY } from '../products';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CatalogPageComponent {
-  private readonly cart = inject(CartService);
+  protected readonly cart = inject(CartService);
   protected readonly products = PRODUCTS;
-  protected readonly currency = SHOP_CURRENCY;
   protected readonly max = CART_MAX_QUANTITY;
   /** Briefly confirms the last "Add to cart". */
   protected readonly justAdded = signal<string | null>(null);
@@ -107,6 +106,10 @@ export class CatalogPageComponent {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
+  }
+
+  protected price(p: Product): number {
+    return priceOf(p, this.cart.currency());
   }
 
   protected inCart(p: Product): number {

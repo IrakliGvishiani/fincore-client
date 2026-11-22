@@ -12,7 +12,6 @@ import { AccountDto, CreatePaymentRequest, PaymentDto, VirtualCardDto } from '..
 import { IdempotencyKeyHolder } from '../../../core/util/idempotency';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { FormAlertComponent } from '../../../shared/ui/form-alert.component';
-import { SHOP_CURRENCY } from '../products';
 
 export interface PayReviewData {
   payment: Omit<CreatePaymentRequest, 'idempotencyKey'>;
@@ -127,7 +126,7 @@ export class PayReviewDialogComponent {
   private readonly paymentsApi = inject(PaymentsApi);
   private readonly dialogRef = inject<MatDialogRef<PayReviewDialogComponent, PaymentDto>>(MatDialogRef);
   protected readonly data = inject<PayReviewData>(MAT_DIALOG_DATA);
-  protected readonly currency = SHOP_CURRENCY;
+  protected readonly currency = this.data.payment.currency ?? 'GEL';
 
   protected readonly paying = signal(false);
   protected readonly error = signal<string | null>(null);

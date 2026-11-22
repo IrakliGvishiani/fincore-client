@@ -13,7 +13,6 @@ import { declineMessage } from '../../../shared/cards/card-utils';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { CartLinesComponent } from '../cart/cart-lines.component';
 import { CartService } from '../cart/cart.service';
-import { SHOP_CURRENCY } from '../products';
 import { checkoutAmountError, checkoutPayload } from './checkout-logic';
 import { openPayReviewDialog } from './pay-review-dialog.component';
 
@@ -34,7 +33,9 @@ export class CheckoutPageComponent {
   private readonly paymentsApi = inject(PaymentsApi);
   private readonly toast = inject(ToastService);
 
-  protected readonly currency = SHOP_CURRENCY;
+  protected get currency() {
+    return this.cart.currency();
+  }
   protected readonly decline = declineMessage;
 
   /** Chosen card id (two-way with the picker) and the chosen usable card with its account. */
@@ -56,7 +57,7 @@ export class CheckoutPageComponent {
     const picked = this.picked();
     if (!picked || this.amountError()) return;
     openPayReviewDialog(this.dialog, {
-      payment: checkoutPayload(picked.card.id, this.cart.lines()),
+      payment: checkoutPayload(picked.card.id, this.cart.lines(), this.cart.currency()),
       card: picked.card,
       account: picked.account,
       keys: this.keys,

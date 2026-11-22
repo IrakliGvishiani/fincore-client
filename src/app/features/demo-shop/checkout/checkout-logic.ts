@@ -1,7 +1,7 @@
 import { PAYMENT_LIMITS } from '../../../core/api/payments.api';
 import { CreatePaymentRequest } from '../../../core/models';
 import { CartLine, cartTotal } from '../cart/cart.service';
-import { SHOP_MERCHANT } from '../products';
+import { SHOP_MERCHANT, ShopCurrency } from '../products';
 
 /**
  * Short order summary for the payment description, e.g. "Order: 2× Coffee beans, 1× Desk lamp".
@@ -23,10 +23,15 @@ export function orderDescription(lines: readonly CartLine[], max: number = PAYME
  * Already trimmed the way the server compares idempotent replays. Also the idempotency fingerprint: a new card
  * or a different cart (total or items) gives a new key.
  */
-export function checkoutPayload(cardId: number, lines: readonly CartLine[]): Omit<CreatePaymentRequest, 'idempotencyKey'> {
+export function checkoutPayload(
+  cardId: number,
+  lines: readonly CartLine[],
+  currency: ShopCurrency,
+): Omit<CreatePaymentRequest, 'idempotencyKey'> {
   return {
     virtualCardId: cardId,
     merchant: SHOP_MERCHANT,
+    currency,
     amount: cartTotal(lines),
     description: orderDescription(lines),
   };

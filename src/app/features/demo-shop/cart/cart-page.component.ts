@@ -4,7 +4,6 @@ import { RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { confirmDialog } from '../../../shared/ui/confirm-dialog.component';
-import { SHOP_CURRENCY } from '../products';
 import { CartService } from './cart.service';
 import { CartLinesComponent } from './cart-lines.component';
 
@@ -33,9 +32,9 @@ import { CartLinesComponent } from './cart-lines.component';
           <h2 class="shop-h2">Summary</h2>
           <div class="shop-total-row">
             <span>Total</span>
-            <span>{{ cart.total() | money: currency }}</span>
+            <span>{{ cart.total() | money: cart.currency() }}</span>
           </div>
-          <p class="shop-muted note">Paid in GEL with a FinCore virtual card.</p>
+          <p class="shop-muted note">Prices in {{ cart.currency() }}. Paid with a FinCore virtual card.</p>
           <a routerLink="/demo-shop/checkout" class="shop-btn shop-btn-primary shop-btn-block">Checkout</a>
           <a routerLink="/demo-shop" class="shop-btn shop-btn-block">Continue shopping</a>
         </aside>
@@ -71,7 +70,6 @@ import { CartLinesComponent } from './cart-lines.component';
 export class CartPageComponent {
   protected readonly cart = inject(CartService);
   private readonly dialog = inject(MatDialog);
-  protected readonly currency = SHOP_CURRENCY;
 
   protected clear(): void {
     confirmDialog(this.dialog, {

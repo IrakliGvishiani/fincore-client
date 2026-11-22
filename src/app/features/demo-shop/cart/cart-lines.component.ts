@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
-import { SHOP_CURRENCY } from '../products';
 import { CART_MAX_QUANTITY, CartLine, CartService, cartTotal } from './cart.service';
 
 /** The cart's items: editable (quantity stepper 1–10, remove) on the cart page, read-only at checkout. */
@@ -14,7 +13,7 @@ import { CART_MAX_QUANTITY, CartLine, CartService, cartTotal } from './cart.serv
           <div class="shop-thumb thumb" [style.background]="line.product.tint" aria-hidden="true">{{ line.product.emoji }}</div>
           <div class="info">
             <span class="name">{{ line.product.name }}</span>
-            <span class="shop-muted each">{{ line.product.price | money: currency }} each</span>
+            <span class="shop-muted each">{{ line.unitPrice | money: cart.currency() }} each</span>
             @if (editable()) {
               <button type="button" class="shop-link-button" (click)="cart.remove(line.product.id)">Remove</button>
             }
@@ -42,7 +41,7 @@ import { CART_MAX_QUANTITY, CartLine, CartService, cartTotal } from './cart.serv
           } @else {
             <span class="shop-muted qty">× {{ line.quantity }}</span>
           }
-          <span class="shop-price line-total">{{ lineTotal(line) | money: currency }}</span>
+          <span class="shop-price line-total">{{ lineTotal(line) | money: cart.currency() }}</span>
         </li>
       }
     </ul>
@@ -137,7 +136,6 @@ import { CART_MAX_QUANTITY, CartLine, CartService, cartTotal } from './cart.serv
 export class CartLinesComponent {
   protected readonly cart = inject(CartService);
   readonly editable = input(false);
-  protected readonly currency = SHOP_CURRENCY;
   protected readonly max = CART_MAX_QUANTITY;
 
   protected lineTotal(line: CartLine): number {
