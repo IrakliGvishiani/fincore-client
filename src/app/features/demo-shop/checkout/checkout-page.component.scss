@@ -138,3 +138,142 @@
   justify-content: center;
   gap: 10px;
 }
+
+// ---- "Pay from" (quote) ----
+.pay-from {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pay-from-title {
+  margin: 4px 0 0;
+  font: var(--mat-sys-title-small);
+}
+
+.quote-loading,
+.quote-error,
+.blocked,
+.notice,
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+
+  p {
+    margin: 0;
+  }
+  mat-icon {
+    flex: none;
+  }
+}
+
+.quote-loading {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.quote-error,
+.blocked {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+
+  a,
+  .link-button {
+    color: inherit;
+    font-weight: 600;
+  }
+}
+
+.notice {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.warning {
+  font: var(--mat-sys-body-small);
+  color: #7a4f00;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.source {
+  padding: 6px 8px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+.source-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.source-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.source-name {
+  font: var(--mat-sys-body-large);
+}
+
+.tag {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-highest);
+  font: var(--mat-sys-label-small);
+}
+
+.source-meta {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.source-reason {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
+}
+
+.source-amount {
+  flex: none;
+  font: var(--mat-sys-title-small);
+  font-variant-numeric: tabular-nums;
+}
+
+:host ::ng-deep .source .mdc-form-field,
+:host ::ng-deep .source label {
+  width: 100%;
+}
+
+.facts .wide {
+  grid-column: 1 / -1;
+}

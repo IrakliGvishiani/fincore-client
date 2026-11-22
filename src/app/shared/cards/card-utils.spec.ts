@@ -146,18 +146,22 @@ describe('card status helpers', () => {
 });
 
 describe('card picker options', () => {
-  it('disables unusable cards with a reason', () => {
+  it('disables cards that cannot pay at all, never because of the currency', () => {
     const cards = [
       card(1, 'Active'),
       card(2, 'Frozen'),
-      card(3, 'Active', { bankAccountId: 2 }),
-      card(4, 'Active', { bankAccountId: 3 }),
+      card(3, 'Active', { bankAccountId: 2 }), // USD account: still selectable, the quote decides
+      card(4, 'Active', { bankAccountId: 3 }), // frozen main account, auto-conversion off
+      card(5, 'Active', { bankAccountId: 3, allowAutoConversion: true }), // frozen main account, auto-conversion on
+      card(6, 'Active', { expiryMonth: 10, expiryYear: 2026 }),
     ];
-    const options = buildCardOptions(cards, [account(1, 'GEL'), account(2, 'USD'), account(3, 'GEL', 'Frozen')], 'GEL', NOW);
+    const options = buildCardOptions(cards, [account(1, 'GEL'), account(2, 'USD'), account(3, 'GEL', 'Frozen')], NOW);
     const reason = (id: number) => options.find((o) => o.card.id === id)!.disabledReason;
     expect(reason(1)).toBeNull();
     expect(reason(2)).toContain('Frozen');
-    expect(reason(3)).toContain('USD');
+    expect(reason(3)).toBeNull();
     expect(reason(4)).toContain('frozen');
+    expect(reason(5)).toBeNull(); // can still pay from another active account
+    expect(reason(6)).toContain('Expired');
   });
 });
