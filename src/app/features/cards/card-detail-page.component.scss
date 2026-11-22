@@ -3,6 +3,29 @@
   max-width: 1100px;
 }
 
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+
+  .page-title {
+    margin: 0;
+  }
+}
+
+.auto-conversion {
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+
+  .help {
+    margin: 6px 0 0;
+  }
+}
+
 .back {
   margin: -8px 0 8px -12px;
 }

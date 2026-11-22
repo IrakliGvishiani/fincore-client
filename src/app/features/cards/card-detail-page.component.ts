@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { Observable, catchError, filter, finalize, of, switchMap } from 'rxjs';
@@ -11,13 +12,15 @@ import { CardsApi } from '../../core/api/cards.api';
 import { AccountDto, VirtualCardDto } from '../../core/models';
 import { ToastService } from '../../core/notify/toast.service';
 import { CardVisualComponent } from '../../shared/cards/card-visual.component';
-import { cardActions, displayStatus } from '../../shared/cards/card-utils';
+import { AutoConversionBadgeComponent } from '../../shared/cards/auto-conversion-badge.component';
+import { AUTO_CONVERSION_HELP, cardActions, displayStatus } from '../../shared/cards/card-utils';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { UtcDatePipe } from '../../shared/pipes/utc-date.pipe';
 import { confirmDialog } from '../../shared/ui/confirm-dialog.component';
 import { StatePanelComponent } from '../../shared/ui/state-panel.component';
 import { AccountsApi } from '../accounts/accounts.api';
 import { PaymentHistoryComponent } from '../payments/payment-history.component';
+import { confirmEnableAutoConversion } from './auto-conversion-confirm';
 import { EditLimitsDialogComponent, EditLimitsDialogData } from './dialogs/edit-limits-dialog.component';
 
 type LoadState = 'loading' | 'ready' | 'not-found' | 'error';
@@ -32,6 +35,8 @@ type StatusAction = 'freeze' | 'unfreeze' | 'close';
     MatCardModule,
     MatIconModule,
     MatTooltipModule,
+    MatSlideToggleModule,
+    AutoConversionBadgeComponent,
     MoneyPipe,
     UtcDatePipe,
     CardVisualComponent,
@@ -60,6 +65,8 @@ export class CardDetailPageComponent implements OnInit {
     () => this.accounts().find((a) => a.id === this.card()?.bankAccountId) ?? null,
   );
   protected readonly busy = signal<StatusAction | null>(null);
+  protected readonly autoBusy = signal(false);
+  protected readonly autoHelp = AUTO_CONVERSION_HELP;
 
   protected readonly status = computed(() => {
     const c = this.card();
@@ -67,7 +74,7 @@ export class CardDetailPageComponent implements OnInit {
   });
   protected readonly actions = computed(() => {
     const c = this.card();
-    return c ? cardActions(c) : { freeze: false, unfreeze: false, close: false, editLimits: false };
+    return c ? cardActions(c) : { freeze: false, unfreeze: false, close: false, editLimits: false, autoConversion: false };
   });
   /** "•••• 1234" for the linked account. */
   protected readonly accountTail = computed(() => {
@@ -148,6 +155,36 @@ export class CardDetailPageComponent implements OnInit {
     })
       .pipe(filter(Boolean))
       .subscribe(() => this.runStatusAction('close', 'Card closed.'));
+  }
+
+  /**
+   * PATCH card/{id}/auto-conversion → 200 with the updated card. Turning it ON is confirmed first (the card can
+   * then spend from all active accounts). The switch shows the server state: it is put back until the answer.
+   */
+  protected toggleAutoConversion(event: MatSlideToggleChange): void {
+    const card = this.card();
+    const enable = event.checked;
+    event.source.checked = !enable; // keep showing the current state until the server confirms
+    if (!card || this.autoBusy() || !this.actions().autoConversion) return;
+    const confirmed: Observable<boolean> = enable ? confirmEnableAutoConversion(this.dialog) : of(true);
+    confirmed
+      .pipe(
+        filter(Boolean),
+        switchMap(() => {
+          this.autoBusy.set(true);
+          return this.cardsApi.setAutoConversion(card.id, enable, { silent: true }).pipe(finalize(() => this.autoBusy.set(false)));
+        }),
+      )
+      .subscribe({
+        next: (updated) => {
+          this.card.set(updated);
+          this.toast.success(updated.allowAutoConversion ? 'Auto-conversion turned on.' : 'Auto-conversion turned off.');
+        },
+        error: (err: unknown) => {
+          this.toast.error(ApiError.from(err).message);
+          this.load();
+        },
+      });
   }
 
   private runStatusAction(action: StatusAction, success: string): void {
